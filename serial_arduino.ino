@@ -6,6 +6,7 @@ HX711 scale(DOUT, CLK);
 float calibration_factor = 2125; //-7050 worked for my 440lb max scale setup
 float units;
 float ounces;
+float pesoiniziale;
 int outputValue = 0;        // value output to the PWM (analog out)
 
 //Metal detector define
@@ -16,11 +17,14 @@ int sensorMetalValue1 = 0;        // value read from the pot
 int sensorMetalValue2 = 0;       // value read from the pot
 
 void setup() {
+  
   // HX711 init
   scale.set_scale();
   scale.tare();  //Reset the scale to 0
   long zero_factor = scale.read_average(); //Get a baseline reading
-
+  scale.set_scale(calibration_factor); //Adjust to this calibration factor
+  // pesoiniziale = scale.get_units(), 10;
+  pesoiniziale = 10;
   
   Serial.begin(57600); // opens serial port, sets data rate to 57600 baud
   pinMode(LED_BUILTIN, OUTPUT);
@@ -29,48 +33,70 @@ void setup() {
 }
 
 void loop() {
-  while (Serial.available() > 0) { // if any data available
-    char incomingByte = Serial.read(); // read byte
-    
-    // arrivato  un byte, aspetto che cambi ilvalore  del peso
 
-    //scale.set_scale(calibration_factor); //Adjust to this calibration factor
-    // units = scale.get_units(), 10;
-    delay(1000); // simulazioe arrivo  peso
-    units = 10.49;
-    
-    Serial.println(units); // restituisce al raspy il peso
-    
-    digitalWrite(LED_BUILTIN, HIGH);   // turn the LED on (HIGH is the voltage level)
-    delay(1000);                       // wait for a second
-    digitalWrite(LED_BUILTIN, LOW); 
+///// versione alterativa
 
-     // muovo il discodi mezzogiro e ua volta terminato comuico al raspy
-     Serial.println("t"); 
-     while(1)  // rimane i attesa di comado per muovere servo e leggere metalli e uv
-     {
-        while (Serial.available() > 0) { // if any data available
-          char incomingByte = Serial.read(); // read byte  
+ // 
+ while (Serial.available() <= 0) {
 
-          // muovo servo
-          // 
-            sensorMetalValue1 = 0;//analogRead(analogInPin1);
-            sensorMetalValue2 = 99; //analogRead(analogInPin2);
-            int totalmetal = sensorMetalValue2 + sensorMetalValue1;
-            Serial.println(totalmetal); 
-            break;
-          
-        
-        }
-        delay(1000);
-     }
-    
-  }
+  delay(1000);
+ }
+  while (Serial.available() > 0) { char incomingByte = Serial.read(); } // consumo
 
-  
-  
-  
+ // arrivato qualcosa, 
+ 
+ // DA IMPLEMENTARE: SBLOCCO SPORTELLO
+ 
+ // procedo ad aspettare che il peso sia diverso da quello iniziale
 
+ scale.set_scale(calibration_factor); //Adjust to this calibration factor
+
+ // CICLO FINCHE' non arriva qualcoa
+ do{
+
+ units = scale.get_units(), 10;
+
+   units = 10.49; // forzatura
+   delay(1000);
+ }while(pesoiniziale == units);
+
+ // DA IMPLEMENTARE: BLOCCO SPORTELLO
+ // DA IMPLEMETARE: MUOVO IL DISCO DI MEZZO GIRO
+ 
+ Serial.println(units); // restituisce al raspy il peso
+ 
+ // ATTENDO SULLA SERIALE
+ while (Serial.available() <= 0) {
+   delay(1000);
+ }
+ while (Serial.available() > 0) { char incomingByte = Serial.read(); } // consumo
+
+ // DOPO CHE RASPY HA COMUICATO DI AVER FATTO LA FOTO
+ // MUOVO SERVO BRACCIO
+ // SESORE METALLI E UV
+
+ sensorMetalValue1 = 0;//analogRead(analogInPin1);
+ sensorMetalValue2 = 99; //analogRead(analogInPin2);
+ int totalmetal = sensorMetalValue2 + sensorMetalValue1;
+ String res="";
+ res = res + totalmetal + "|" + 21;
+ 
+ // COMUNICO VALORI AL RASP
+ Serial.println(res);
+
+ // RIMANGO IN ATTESA DEL RESPONSO DEL RASPBERRY
+ while (Serial.available() <= 0) {
+   delay(1000);
+ }
+ while (Serial.available() > 0) { char incomingByte = Serial.read(); } // consumo
+
+ // DA IMPLEMETARE:  A SECONDA DEL CARATTERE RICEVUTO MI MUOVO E GETTO RIFIUTO
+
+ // DA IMPLEMETARE: FACCIO HOMING
+ // COMUICO AL RASPY DI AVER FINITO
+ Serial.println("T");
+
+ 
   delay(1000);
 }
 

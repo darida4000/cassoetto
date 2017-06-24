@@ -25,6 +25,10 @@
 #include <string> 
 #include <iostream>
 #include <fstream> 
+#include <vector>
+#include <sstream>
+#include <utility>
+
 
 #include "rs232.h"
 
@@ -81,7 +85,18 @@ int colindex=0;
 double maxFound=0;
 
 
-   
+std::vector<std::string> explode(std::string const & s, char delim)
+{
+    std::vector<std::string> result;
+    std::istringstream iss(s);
+
+    for (std::string token; std::getline(iss, token, delim); )
+    {
+        result.push_back(token);
+    }
+
+    return result;
+}
 
 int main()
 {
@@ -194,7 +209,8 @@ while(true)
   // valori otteuti da arduino:
   float peso = 0.0;
   float metallo= 0.0;
-  bool trasparenza = false;
+  float uv= 0.0;
+ 
   
 
   
@@ -212,6 +228,7 @@ while(true)
   usleep(1000000);  /* aspetto un secondo */
  
   // STEP 2) RIMANGO IN ATTESA CHE ARDUINO MI RESTITUISCA IL PESO
+  // E TERMINI MEZZO GIRO
   
   while(1)
   {
@@ -219,7 +236,9 @@ while(true)
 	 	
 	int n = RS232_PollComport(cport_nr_arduino, str_recv, (int)BUF_SIZE);
 	if(n > 0){
-      str_recv[n] = 0;   
+      str_recv[n] = 0;  
+        
+       //printf("Ricevuto: %s",str_recv); 
       std::string str;
 	  str.append(reinterpret_cast<const char*>(str_recv));	
       peso = atof(str.c_str());
@@ -231,7 +250,7 @@ while(true)
   cout <<  "Peso otteuto: " << peso << endl ;
   cout << "i  attesa giro teminato";
   usleep(2000000);  /* aspetto un secondo */
- 
+ /*
   // STEP 3) ASPETTO CHE ARDUINO MI DICA DI AVER  TERMIATO IL MEZZO GIRO
   while(1)
   {	 	
@@ -241,10 +260,10 @@ while(true)
        break; // esce
             
 	}   
-    usleep(1000000);  /* pausa 5 secondi */ 
+    usleep(1000000);   
   }
   cout << "fine giro" << endl;
-  
+  */
   
   // STEP 4) FOTO
   // STEP 5) COMUICO AD ARDUINO DI AVER FATTO LE FOTO
@@ -257,7 +276,7 @@ while(true)
    // STEP 6) RIMANGO I ATTESA CHE ARDUINO MI COMUICHI I VALORI DEI SENSORI METALLI E FOTO
     while(1)
   {
-	//aspetto che arduio mi restituisca  il metallo
+	//aspetto che arduio mi restituisca  il metallo E ALTRI VALORI
 	 	
 	int n = RS232_PollComport(cport_nr_arduino, str_recv, (int)BUF_SIZE);
 	if(n > 0){
@@ -265,23 +284,40 @@ while(true)
        printf("Ricevuto: %s",str_recv);
 	  std::string str;
 		str.append(reinterpret_cast<const char*>(str_recv));	
+		
+		std::vector<std::string> v = explode(str, '|');
+      
 
-      metallo = atof(str.c_str());
+      metallo = atof(v[0].c_str());
+      uv= atof(v[1].c_str());
        break; // esce
             
 	}
 	  
- 
     
     usleep(1000000);  /* pausa 5 secondi */
    
   }
   
-  cout <<  "metallo otteuto: " << metallo << endl ;
+  cout <<  "metallo otteuto: " << metallo << "  " << uv << endl ;
   
-  //PRIME ELABORAZIONI, ARDUINO RIMAE I ATTESA DI RESPONSO
+  // STEP 7)  ELABORAZIONI, ARDUINO RIMAE I ATTESA DI RESPONSO
   
+  RS232_cputs(cport_nr_arduino, " "); 
+  printf("Mando responso a arduino \n");
+ 
+   // STEP 8) ASPETTO CHE ARDUINO MI DICA DI AVER  GETTATO RIFIUTO E FATTO HOMING
+  while(1)
+  {	 	
+	int n = RS232_PollComport(cport_nr_arduino, str_recv, (int)BUF_SIZE);
+	if(n > 0){
   
+       break; // esce
+            
+	}   
+    usleep(1000000);  /* pausa 5 secondi */ 
+  }
+  cout << "FINE" << endl;   
   
   break;
 } // fine loop principale
