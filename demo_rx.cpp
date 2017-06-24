@@ -1,20 +1,20 @@
-	
+
   /////////////////////////////////////////////////////////////////////
-  
+
   // RICICLO PROGETTO DIFFERENZIATA
   //
-  // 
-  
+  //
+
   /////////////////////////////////////////////////////////////////////
 
 
-	
+
   /////////////////////////////////////////////////////////////////////
-  
+
   // INCLUDES
-  
+
   /////////////////////////////////////////////////////////////////////
-	
+
 
 
 #include <stdlib.h>
@@ -22,9 +22,9 @@
 #include <unistd.h>
 #include <string>
 #include <cmath>
-#include <string> 
+#include <string>
 #include <iostream>
-#include <fstream> 
+#include <fstream>
 #include <vector>
 #include <sstream>
 #include <utility>
@@ -71,7 +71,7 @@ int objectIndex=0;
 Mat img_object;
 Mat img_scene[IMG_SCENE];
 VideoCapture cap;
-bool found=false;  
+bool found=false;
 Mat img_object_data[IMG_OBJECT];
 Mat img_matches[IMG_OBJECT];
 double determinanti[IMG_OBJECT][IMG_SCENE];
@@ -85,246 +85,237 @@ int colindex=0;
 double maxFound=0;
 
 
-std::vector<std::string> explode(std::string const & s, char delim)
-{
-    std::vector<std::string> result;
-    std::istringstream iss(s);
-
-    for (std::string token; std::getline(iss, token, delim); )
-    {
-        result.push_back(token);
-    }
-
-    return result;
-}
+std::vector<std::string> explode(std::string const & s, char delim);
 
 int main()
 {
 	cout << "inizio";
 
   /////////////////////////////////////////////////////////////////////
-  
+
   // DICHIARAZIONI
-  
+
   /////////////////////////////////////////////////////////////////////
-	
-  // RFID 	
+
+  // RFID
   int i=0;
   int k=0;
-  int cport_nr_arduino=24;  
-  int bdrate_arduino=57600;  
-  int cport_nr=24;  
-  int bdrate=19200; 
+  int cport_nr_arduino=24;
+  int bdrate_arduino=57600;
+  int cport_nr=24;
+  int bdrate=19200;
   char mode[]={'8','N','1',0}; // 8 data bits, no parity, 1 stop bit
   char str_send[BUF_SIZE]; // send data buffer
   unsigned char str_recv[BUF_SIZE]; // recv data buffer
   char codice_tessera_hex[6];
- 
- 
- 
+
+
+
   /////////////////////////////////////////////////////////////////////
-  
+
   // CONTROLLI
-  
+
   /////////////////////////////////////////////////////////////////////
- 
-   
- 
+
+
+
   /*if(RS232_OpenComport(cport_nr, bdrate, mode))
   {
     printf("Problema apertura porta scheda rfid\n");
     return(0);
   }*/
-  
+
   if(RS232_OpenComport(cport_nr_arduino, bdrate_arduino, mode))
   {
     printf("Problema apertura comunicazione con arduino\n");
     return(0);
   }
 
+  try
+	{
+		if(!cap.open(0))
+		{
+			cout << "Errore apertura cam " << cam;
+        }
+    }
+    catch(cv::Exception& e)
+    {
+		sleep(3000);
+		if(!cap.open(0))
+		{
+			cout << "Errore apertura cam " << cam;
+			return 0;
+        }
+	}
+
   /////////////////////////////////////////////////////////////////////
-  
+
   // INIZIALIZZAZIONI
-  
+
   /////////////////////////////////////////////////////////////////////
- 
+
 	// open cv
-	
-	f2d= ORB::create(); 
+
+	f2d= ORB::create();
     int minHessian = 400;
     detector = ORB::create(ORB_PRECISION);
-	BFMatcher matcher(NORM_HAMMING); 
-    
+	BFMatcher matcher(NORM_HAMMING);
+
 	// legge tutte le immagini dal disco
-	
-    readImages();  
+
+    readImages();
 
 	usleep(1000000);  /* ASPETTA un secondo */
 
   /////////////////////////////////////////////////////////////////////
-  
+
   // INZIO LOOP PRINIPALE
-  
+
   /////////////////////////////////////////////////////////////////////
 
 while(true)
 {
-	
-  /////////////////////////////////////////////////////////////////////
-  
-  // ATTESA RFID
-  
-  /////////////////////////////////////////////////////////////////////
 
+  // INIZIALIZZO VARIABILI PER I VALORI OTTENUTI DA ARDUINO:
 
-  	
-  
-  while(1)
-  {		
-	  int a;
-	  cin >> a;//simulo rfid
-		break;
-
-	int n = RS232_PollComport(cport_nr, str_recv, (int)BUF_SIZE);
-	
-	if(n > 0){
-      str_recv[n] = 0; 
-
-	  
-	  sprintf(codice_tessera_hex,"%02X%02X%02X",str_recv[6],str_recv[7],str_recv[8]);
-	  
-	  printf("CODICE TESSERA PER DATABASE:%s \n",codice_tessera_hex); 
-	  
-  
-      break; // esco dal ciclo se tessera strisciata
-            
-	}
-	i++;
-    i %= 2;
-    usleep(1000000);  // 1 secondo di pausa 
-
-  } // fine ciclo lettura su tessera 
-  
-  
-  // valori otteuti da arduino:
   float peso = 0.0;
   float metallo= 0.0;
   float uv= 0.0;
- 
-  
 
-  
   /////////////////////////////////////////////////////////////////////
-  
-  // CICLO COMUNICAZIONE ARDUINO
-  
-  /////////////////////////////////////////////////////////////////////  
-  
-  // STEP 1)  DICO A ARDUINO DI BLOCCARE LO SPORTELLO E RIMANERE IN ATTESA DELLA BILANCIA
-  
-  RS232_cputs(cport_nr_arduino, " "); //mando l'ardu i attesa del peso
- 
-  printf("Invio ad arduio comado per sblocco sportello  e il peso \n");
-  usleep(1000000);  /* aspetto un secondo */
- 
-  // STEP 2) RIMANGO IN ATTESA CHE ARDUINO MI RESTITUISCA IL PESO
-  // E TERMINI MEZZO GIRO
-  
+
+  // ATTESA RFID
+
+  /////////////////////////////////////////////////////////////////////
+
   while(1)
   {
-	
-	 	
-	int n = RS232_PollComport(cport_nr_arduino, str_recv, (int)BUF_SIZE);
+    //simulo rfid
+    int a;
+    cin >> a;
+    break;
+
+	int n = RS232_PollComport(cport_nr, str_recv, (int)BUF_SIZE);
+    if(n > 0){
+        str_recv[n] = 0;
+        sprintf(codice_tessera_hex,"%02X%02X%02X",str_recv[6],str_recv[7],str_recv[8]);
+        printf("CODICE TESSERA PER DATABASE:%s \n",codice_tessera_hex);
+        break; // esco dal ciclo se tessera strisciata
+    }
+	usleep(1000000);  // 1 secondo di pausa
+   } // fine ciclo lettura su tessera
+
+
+
+  /////////////////////////////////////////////////////////////////////
+
+  // CICLO COMUNICAZIONE ARDUINO
+
+  /////////////////////////////////////////////////////////////////////
+
+  // STEP 1)  DICO A ARDUINO DI BLOCCARE LO SPORTELLO E RIMANERE IN ATTESA DELLA BILANCIA
+
+  RS232_cputs(cport_nr_arduino, " "); //mando l'ardu i attesa del peso
+
+  printf("Invio ad arduino comando per sblocco sportello  e il peso \n");
+  usleep(1000000);  /* aspetto un secondo */
+
+  // STEP 2) RIMANGO IN ATTESA CHE ARDUINO MI RESTITUISCA IL PESO
+  // E TERMINI MEZZO GIRO
+
+  while(1)
+  {
+    int n = RS232_PollComport(cport_nr_arduino, str_recv, (int)BUF_SIZE);
 	if(n > 0){
-      str_recv[n] = 0;  
-        
-       //printf("Ricevuto: %s",str_recv); 
+      str_recv[n] = 0;
       std::string str;
-	  str.append(reinterpret_cast<const char*>(str_recv));	
+	  str.append(reinterpret_cast<const char*>(str_recv));
       peso = atof(str.c_str());
-      break; 
+      break;
     }
 	usleep(1000000);  /* pausa */
-   
   }
   cout <<  "Peso otteuto: " << peso << endl ;
   cout << "i  attesa giro teminato";
-  usleep(2000000);  /* aspetto un secondo */
+
  /*
   // STEP 3) ASPETTO CHE ARDUINO MI DICA DI AVER  TERMIATO IL MEZZO GIRO
   while(1)
-  {	 	
+  {
 	int n = RS232_PollComport(cport_nr_arduino, str_recv, (int)BUF_SIZE);
 	if(n > 0){
-  
+
        break; // esce
-            
-	}   
-    usleep(1000000);   
+
+	}
+    usleep(1000000);
   }
   cout << "fine giro" << endl;
   */
-  
-  // STEP 4) FOTO
-  // STEP 5) COMUICO AD ARDUINO DI AVER FATTO LE FOTO
-  
-  RS232_cputs(cport_nr_arduino, " "); 
- 
-  printf("Invio ad arduio comado fie foto \n");
-   usleep(1000000); 
-   
-   // STEP 6) RIMANGO I ATTESA CHE ARDUINO MI COMUICHI I VALORI DEI SENSORI METALLI E FOTO
-    while(1)
-  {
-	//aspetto che arduio mi restituisca  il metallo E ALTRI VALORI
-	 	
-	int n = RS232_PollComport(cport_nr_arduino, str_recv, (int)BUF_SIZE);
-	if(n > 0){
-      str_recv[n] = 0;   /* zero alla fine della stringa */
-       printf("Ricevuto: %s",str_recv);
-	  std::string str;
-		str.append(reinterpret_cast<const char*>(str_recv));	
-		
-		std::vector<std::string> v = explode(str, '|');
-      
 
-      metallo = atof(v[0].c_str());
-      uv= atof(v[1].c_str());
-       break; // esce
-            
-	}
-	  
-    
-    usleep(1000000);  /* pausa 5 secondi */
-   
-  }
-  
-  cout <<  "metallo otteuto: " << metallo << "  " << uv << endl ;
-  
+    usleep(2000000);  /* aspetto un secondo */
+
+    // STEP 4) FOTO
+
+    captureImages(0);
+
+    // STEP 5) COMUNICO AD ARDUINO DI AVER FATTO LE FOTO
+
+    RS232_cputs(cport_nr_arduino, " ");
+
+    printf("Invio ad arduino comado fine foto \n");
+    usleep(1000000);
+
+    // STEP 6) RIMANGO I ATTESA CHE ARDUINO MI COMUICHI I VALORI DEI SENSORI METALLI E UV
+    while(1)
+    {
+	//aspetto che arduino mi restituisca  il metallo E ALTRI VALORI
+
+        int n = RS232_PollComport(cport_nr_arduino, str_recv, (int)BUF_SIZE);
+        if(n > 0){
+            str_recv[n] = 0;
+            printf("Ricevuto: %s",str_recv);
+            std::string str;
+            str.append(reinterpret_cast<const char*>(str_recv));
+            std::vector<std::string> v = explode(str, '|');
+            metallo = atof(v[0].c_str());   // metallo
+            uv = atof(v[1].c_str());        // trasparenza
+            break; // esce
+        }
+        usleep(1000000);  // pausa
+    }
+
+  cout <<  "DATI OTTENUTI: " << metallo << "  " << uv << endl ;
+
   // STEP 7)  ELABORAZIONI, ARDUINO RIMAE I ATTESA DI RESPONSO
-  
-  RS232_cputs(cport_nr_arduino, " "); 
+
+  RS232_cputs(cport_nr_arduino, " ");
   printf("Mando responso a arduino \n");
- 
+
    // STEP 8) ASPETTO CHE ARDUINO MI DICA DI AVER  GETTATO RIFIUTO E FATTO HOMING
   while(1)
-  {	 	
+  {
 	int n = RS232_PollComport(cport_nr_arduino, str_recv, (int)BUF_SIZE);
 	if(n > 0){
-  
+
        break; // esce
-            
-	}   
-    usleep(1000000);  /* pausa 5 secondi */ 
+
+	}
+    usleep(1000000);
   }
-  cout << "FINE" << endl;   
-  
+
+  // STEP 9) SALVO I DATI NEL CLOUD
+
+  salva_dati_thingspeack();
+
+  cout << "FINE" << endl;
+
   break;
 } // fine loop principale
 
 
 
-
+   cap.release();
 
   return(0);
 }
@@ -332,10 +323,24 @@ while(true)
 
 
   /////////////////////////////////////////////////////////////////////
-  
+
   // FUNZIONI APPOGGIO
-  
-  /////////////////////////////////////////////////////////////////////  
+
+  /////////////////////////////////////////////////////////////////////
+
+
+  /////////////////////////////////////////////////////////////////////
+
+  // FUNZIONI APPOGGIO
+
+  /////////////////////////////////////////////////////////////////////
+
+
+  /////////////////////////////////////////////////////////////////////
+
+  // FUNZIONI APPOGGIO
+
+  /////////////////////////////////////////////////////////////////////
 
 void readImages()
 {
@@ -358,26 +363,26 @@ void readImages()
   nomiRifiuti[7] = "Fonzie";
 
   for(int i =0;i< maxImages; i++) for(int ii =0;ii< 3; ii++) determinanti[i][ii] = 0;
- 
+
 	for (int i=0;i< maxImages;i++)
-	{	
+	{
 		/*detector->detect(img_object_data[i], keypoints_object[i]);
 		extractor->compute(img_object_data[i], keypoints_object[i], descriptors_object[i] );
 		*/
-		detector->detectAndCompute(img_object_data[i], noArray(), keypoints_object[i], descriptors_object[i]);	
+		detector->detectAndCompute(img_object_data[i], noArray(), keypoints_object[i], descriptors_object[i]);
 		/*if(descriptors_object[i].type()!=CV_32F) {
           descriptors_object[i].convertTo(descriptors_object[i], CV_32F);
         }*/
 
-        
-	}            
+
+	}
 }
 
 void captureImages(int cam)
 {
 
 	cout << "Inizio cattura img";
-	try
+	/*try
 	{
 		if(!cap.open(cam))
 		{
@@ -391,52 +396,52 @@ void captureImages(int cam)
 		{
 			cout << "Errore apertura cam " << cam;
 			return;
-        }		
+        }
 	}
-	
 
+*/
     try
     {
       for(int i=0;i<10;i++) cap >> img_scene[0];
       for(int i=0;i<10;i++) cap >> img_scene[1];
       for(int i=0;i<10;i++) cap >> img_scene[2];
-    } 
+    }
           catch(cv::Exception& e)
     {
 
 
-    } 
+    }
     /*
     // controllo in range
-    
+
     Mat test2_mask,hsv_test2;
     cvtColor( img_scene[2], hsv_test2, COLOR_BGR2HSV );
 
     inRange(hsv_test2, Scalar(25, 15, 50), Scalar(33, 255, 255), test2_mask); // valore per fonzie con percentuali intorno al 15
     //inRange(hsv_test2, Scalar(10, 100, 100), Scalar(20, 255, 255), test2_mask); // valore per croccantelle con percentuali intorno al 15
-    
+
     double pixel = countNonZero(test2_mask); //  307200 pixel totali per immagini 640 x 480
     cout << "non zero:" << pixel << endl;
-    
+
     double perc = pixel*100/307200;
     if (perc > 15) return 5;
-    
+
     */
 	cout << "immagini catturate";
 	for (int i=0;i< 3;i++)
-	{	
-	
-		detector->detectAndCompute(img_scene[i], noArray(), keypoints_scene[i], descriptors_scene[i]);	
+	{
+
+		detector->detectAndCompute(img_scene[i], noArray(), keypoints_scene[i], descriptors_scene[i]);
 
         /*if(descriptors_scene[i].type()!=CV_32F) {
           descriptors_scene[i].convertTo(descriptors_scene[i], CV_32F);
         }*/
-	
-	}            	
-	imshow("test",img_scene[0]);
-	
 
-    waitKey(0);
+	}
+	//imshow("test",img_scene[0]);
+
+
+    //waitKey(0);
 
 }
 
@@ -475,7 +480,7 @@ int findMaxIndex()
     int k;
     for( k=0;k< maxImages;k++)
     {
-      
+
       for(int h=0;h<3;h++)
       {
   //      cout << " " << determinanti[k][h];
@@ -485,7 +490,7 @@ int findMaxIndex()
 
           max = determinanti[k][h];
           indice = k;
-          colindex=h; 
+          colindex=h;
         }
       }
       cout << endl;
@@ -503,7 +508,7 @@ bool calcolaEmd()
     Mat src_test2, hsv_test2;
     Mat hsv_half_down;
 
-    
+
     int imgCarta=2;
     Mat carta[imgCarta];
     Mat scene[3];
@@ -511,27 +516,27 @@ bool calcolaEmd()
     Mat hsv_scene[3];
     Mat mask_carta[imgCarta];
     Mat mask_scene[3];
- 
+
     // carico immagine sfondo
     bg=imread("sfondo.jpg");
-    
+
     carta[0] = imread( "cartamarroneok.jpg", 1 );
     carta[1] = imread( "cartamarroneok.jpg", 1 ); // sostituire con carta bianca
-    
-    for(int i=0;i<imgCarta;i++) 
+
+    for(int i=0;i<imgCarta;i++)
       {
         carta[i] = carta[i] - bg;
-      
+
       /// Converto in HSV
         cvtColor( carta[i], hsv_carta[i], COLOR_BGR2HSV );
-        
- 
-    
+
+
+
     inRange(hsv_carta[i], Scalar(0, 15, 50), Scalar(180, 255, 255), mask_carta[i]);
- 
+
       }
 
-    for(int i=0;i<3;i++) 
+    for(int i=0;i<3;i++)
       {
         scene[i] = img_scene[i].clone();
         scene[i] = scene[i] - bg;
@@ -550,7 +555,7 @@ bool calcolaEmd()
 
     const float* ranges[] = { h_ranges,  s_ranges };
 
-    
+
     int channels[] = { 0,1 };
 
     MatND hist_base[imgCarta];
@@ -572,7 +577,7 @@ bool calcolaEmd()
   for(int i=0;i<imgCarta;i++)   /// per ogni img carta
   {
   for (int j=0;j<3;j++) // per ogni fotogramma
-  {  
+  {
   vector<cv::Mat> sig(3);
   MatND hist[2];
 
@@ -583,7 +588,7 @@ bool calcolaEmd()
   {
     vector <cv::Vec3f> sigv;
     normalize( hist[i], hist[i], 1, 0, NORM_L1 );
-  
+
     for(int h=0;h<h_bins;h++)
     {
       for(int s=0;s< s_bins;s++)
@@ -594,18 +599,18 @@ bool calcolaEmd()
 
       }
       sig[i] =cv::Mat(sigv).clone().reshape(1);
-       
-        
+
+
     }
     if(i>0){
 
         float emdResult = EMD(sig[0],sig[i],cv::DIST_L1);
         cout << "Risultato emd: " << emdResult;
-        if (emdResult<4) return true;   
+        if (emdResult<4) return true;
       }
-    } 
+    }
    }
- } 
+ }
 
 
 return false;
@@ -614,27 +619,39 @@ return false;
 void salva_dati_thingspeack()
 {
   /////////////////////////////////////////////////////////////////////
-  
+
   // CHIAMATA CURL
-  
+
   /////////////////////////////////////////////////////////////////////
-  
+
   CURL *curl;
   CURLcode res;
- 
+
   curl = curl_easy_init();
   if(curl) {
     curl_easy_setopt(curl, CURLOPT_URL, "https://api.thingspeak.com/update?api_key=786D9K3E371MIWY6&field1=15");
-  
+
     curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
- 
+
     res = curl_easy_perform(curl);
     // controllo errori chiamata
     //if(res != CURLE_OK) cout << "Errore";
    //   fprintf(stderr, "errore: %s\n",
               //curl_easy_strerror(res));
- 
+
     curl_easy_cleanup(curl);
   }
-} 
+}
 
+std::vector<std::string> explode(std::string const & s, char delim)
+{
+    std::vector<std::string> result;
+    std::istringstream iss(s);
+
+    for (std::string token; std::getline(iss, token, delim); )
+    {
+        result.push_back(token);
+    }
+
+    return result;
+}
