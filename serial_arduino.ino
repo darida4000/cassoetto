@@ -33,7 +33,7 @@ void setup() {
 }
 
 void loop() {
-
+while(true){
 ///// versione alterativa
 
  // 
@@ -51,19 +51,25 @@ void loop() {
 
  scale.set_scale(calibration_factor); //Adjust to this calibration factor
 
- // CICLO FINCHE' non arriva qualcoa
+ // CICLO FINCHE' non arriva qualcosa. A u certo punto dovrò, se non arriva nulla, fermarmi
+ int attesa =0;
  do{
 
  units = scale.get_units(), 10;
 
    units = 10.49; // forzatura
    delay(1000);
- }while(pesoiniziale == units);
+   attesa++; // aspetto max un minuto
+ }while(pesoiniziale == units && attesa < 60);
+ 
+ if(pesoiniziale == units) continue; // se non è arrivato nulla e è passato un minuto
 
+  
  // DA IMPLEMENTARE: BLOCCO SPORTELLO
  // DA IMPLEMETARE: MUOVO IL DISCO DI MEZZO GIRO
- 
- Serial.println(units); // restituisce al raspy il peso
+ String r="pe";
+ r=units +  r;
+ Serial.println(r); // restituisce al raspy il peso
  
  // ATTENDO SULLA SERIALE
  while (Serial.available() <= 0) {
@@ -98,6 +104,7 @@ void loop() {
 
  
   delay(1000);
+}
 }
 
 /*

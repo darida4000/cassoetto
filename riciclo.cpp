@@ -15,8 +15,6 @@
 
   /////////////////////////////////////////////////////////////////////
 
-
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -29,10 +27,7 @@
 #include <sstream>
 #include <utility>
 
-
 #include "rs232.h"
-
-
 #include <curl/curl.h>
 
 #include <opencv2/opencv.hpp>
@@ -62,10 +57,19 @@ int findMaxIndex();
 void captureImages(int cam);
 bool calcolaEmd();
 void salva_dati_thingspeack();
+std::vector<std::string> explode(std::string const & s, char delim);
+void readConfig();
+int checkAll();
 
 
-// VARIABILI
 
+  /////////////////////////////////////////////////////////////////////
+
+  // DICHIARAZIONI
+
+  /////////////////////////////////////////////////////////////////////
+
+// OpenCV
 int maxImages=IMG_OBJECT; // togliere
 int objectIndex=0;
 Mat img_object;
@@ -83,24 +87,11 @@ std::vector<KeyPoint> keypoints_object[IMG_OBJECT], keypoints_scene[IMG_SCENE];
 String nomiRifiuti[IMG_OBJECT];
 int colindex=0;
 double maxFound=0;
-
-
-std::vector<std::string> explode(std::string const & s, char delim);
-
-int main()
-{
-	cout << "inizio";
-
-  /////////////////////////////////////////////////////////////////////
-
-  // DICHIARAZIONI
-
-  /////////////////////////////////////////////////////////////////////
-
+  
   // RFID
   int i=0;
   int k=0;
-  int cport_nr_arduino=24;
+  int cport_nr_arduino=25;
   int bdrate_arduino=57600;
   int cport_nr=24;
   int bdrate=19200;
@@ -110,6 +101,12 @@ int main()
   char codice_tessera_hex[6];
 
 
+int main()
+{
+	cout << "Inizio" << endl << flush;
+	
+	readConfig(); // lettura file testuale di configurazione
+  
 
   /////////////////////////////////////////////////////////////////////
 
@@ -117,36 +114,8 @@ int main()
 
   /////////////////////////////////////////////////////////////////////
 
+   if(checkAll()==-1) return 0;
 
-
-  /*if(RS232_OpenComport(cport_nr, bdrate, mode))
-  {
-    printf("Problema apertura porta scheda rfid\n");
-    return(0);
-  }*/
-
-  if(RS232_OpenComport(cport_nr_arduino, bdrate_arduino, mode))
-  {
-    printf("Problema apertura comunicazione con arduino\n");
-    return(0);
-  }
-
-  try
-	{
-		if(!cap.open(0))
-		{
-			cout << "Errore apertura cam " << cam;
-        }
-    }
-    catch(cv::Exception& e)
-    {
-		sleep(3000);
-		if(!cap.open(0))
-		{
-			cout << "Errore apertura cam " << cam;
-			return 0;
-        }
-	}
 
   /////////////////////////////////////////////////////////////////////
 
@@ -163,7 +132,7 @@ int main()
 
 	// legge tutte le immagini dal disco
 
-    readImages();
+   // readImages();
 
 	usleep(1000000);  /* ASPETTA un secondo */
 
@@ -172,7 +141,7 @@ int main()
   // INZIO LOOP PRINIPALE
 
   /////////////////////////////////////////////////////////////////////
-
+//int n = RS232_PollComport(cport_nr_arduino, str_recv, (int)BUF_SIZE);
 while(true)
 {
 
@@ -190,10 +159,7 @@ while(true)
 
   while(1)
   {
-    //simulo rfid
-    int a;
-    cin >> a;
-    break;
+	cout << "Pool rfid" << endl << flush;
 
 	int n = RS232_PollComport(cport_nr, str_recv, (int)BUF_SIZE);
     if(n > 0){
@@ -227,7 +193,11 @@ while(true)
   {
     int n = RS232_PollComport(cport_nr_arduino, str_recv, (int)BUF_SIZE);
 	if(n > 0){
-      str_recv[n] = 0;
+		str_recv[n] = 0;
+	
+		//printf("Ricevuto: %s %c %c",str_recv,str_recv[0],str_recv[n-2]);
+		if((str_recv[n-4] != 'p') || (str_recv[n-3] != 'e')) continue;
+      str_recv[n-2] = 0;
       std::string str;
 	  str.append(reinterpret_cast<const char*>(str_recv));
       peso = atof(str.c_str());
@@ -654,4 +624,58 @@ std::vector<std::string> explode(std::string const & s, char delim)
     }
 
     return result;
+}
+void readConfig()
+{
+	ifstream fp;
+	char line[100];
+	std::vector<std::string> v ;
+	String s;
+	
+	fp.open("config.riciclo");
+	fp >> line;
+	
+	s=line;
+	v = explode(s, '=');
+    cport_nr_arduino = atof(v[1].c_str());  
+	fp >> line;
+	
+	s=line;
+	v = explode(line, '=');
+    cport_nr = atof(v[1].c_str()); 	
+    
+    fp.close();
+	
+}
+int checkAll()
+{
+  if(RS232_OpenComport(cport_nr, bdrate, mode))
+  {
+    printf("Problema apertura porta scheda rfid\n");
+    return -1;
+  }
+
+  if(RS232_OpenComport(cport_nr_arduino, bdrate_arduino, mode))
+  {
+    printf("Problema apertura comunicazione con arduino\n");
+    return -1;
+  }
+
+  try
+	{
+		if(!cap.open(0))
+		{
+			cout << "Errore apertura cam " << 0;
+        }
+    }
+    catch(cv::Exception& e)
+    {
+		sleep(3000);
+		if(!cap.open(0))
+		{
+			cout << "Errore apertura cam " << 0;
+			return -1;
+        }
+	}
+
 }
