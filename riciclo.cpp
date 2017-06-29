@@ -56,12 +56,12 @@ void readImages();
 int findMaxIndex();
 void captureImages(int cam);
 bool calcolaEmd();
-void salva_dati_thingspeack();
+void  salva_dati_thingspeack(string codice_tessera, string mat, float peso);
 std::vector<std::string> explode(std::string const & s, char delim);
 void readConfig();
 int checkAll();
-
-
+string imageDetection();
+string colorQuickWin();
 
   /////////////////////////////////////////////////////////////////////
 
@@ -87,6 +87,8 @@ std::vector<KeyPoint> keypoints_object[IMG_OBJECT], keypoints_scene[IMG_SCENE];
 String nomiRifiuti[IMG_OBJECT];
 int colindex=0;
 double maxFound=0;
+Mat bg; Mat carta[2];
+BFMatcher matcher(NORM_HAMMING);
   
   // RFID
   int i=0;
@@ -103,7 +105,7 @@ double maxFound=0;
 
 int main()
 {
-	cout << "Inizio" << endl << flush;
+	cout << "Accensione" << endl << flush;
 	
 	readConfig(); // lettura file testuale di configurazione
   
@@ -128,7 +130,7 @@ int main()
 	f2d= ORB::create();
     int minHessian = 400;
     detector = ORB::create(ORB_PRECISION);
-	BFMatcher matcher(NORM_HAMMING);
+	
 
 	// legge tutte le immagini dal disco
 
@@ -141,7 +143,8 @@ int main()
   // INZIO LOOP PRINIPALE
 
   /////////////////////////////////////////////////////////////////////
-//int n = RS232_PollComport(cport_nr_arduino, str_recv, (int)BUF_SIZE);
+  cout << "Ready to go!" << endl << flush;
+
 while(true)
 {
 
@@ -186,7 +189,7 @@ while(true)
   printf("Invio ad arduino comando per sblocco sportello  e il peso \n");
   usleep(1000000);  /* aspetto un secondo */
 
-  // STEP 2) RIMANGO IN ATTESA CHE ARDUINO MI RESTITUISCA IL PESO
+  // STEP 2-3) RIMANGO IN ATTESA CHE ARDUINO MI RESTITUISCA IL PESO
   // E TERMINI MEZZO GIRO
 
   while(1)
@@ -208,20 +211,6 @@ while(true)
   cout <<  "Peso otteuto: " << peso << endl ;
   cout << "i  attesa giro teminato";
 
- /*
-  // STEP 3) ASPETTO CHE ARDUINO MI DICA DI AVER  TERMIATO IL MEZZO GIRO
-  while(1)
-  {
-	int n = RS232_PollComport(cport_nr_arduino, str_recv, (int)BUF_SIZE);
-	if(n > 0){
-
-       break; // esce
-
-	}
-    usleep(1000000);
-  }
-  cout << "fine giro" << endl;
-  */
 
     usleep(2000000);  /* aspetto un secondo */
 
@@ -257,9 +246,56 @@ while(true)
 
   cout <<  "DATI OTTENUTI: " << metallo << "  " << uv << endl ;
 
-  // STEP 7)  ELABORAZIONI, ARDUINO RIMAE I ATTESA DI RESPONSO
-
-  RS232_cputs(cport_nr_arduino, " ");
+  // STEP 7)  ELABORAZIONI, ARDUINO RIMANE IN ATTESA DI RESPONSO
+    bool trovato = false;
+    char risultato[100];
+    sprintf(risultato,"I - Indifferenziato");
+    
+    if((metallo > 0.00) && (peso > 40) && (peso < 50))
+    {
+		sprintf(risultato,"M - Lattina");
+		trovato = true;
+	}
+	
+    if((uv > 0.00) && (peso > 40) && (peso < 50) && (trovato ==false))
+    {
+		sprintf(risultato,"P - Bottiglia di plastica");
+		trovato = true;
+	}
+	
+	if(trovato == false) 
+	{
+		string r = colorQuickWin();
+		if(r != "")
+		{
+			sprintf(risultato,"%s",r.c_str());
+			trovato = true;
+		}
+		
+		
+		// vedo se è carta
+		if(trovato == false) 
+		{
+			if((calcolaEmd()==true) && (peso > 40) && (peso < 50))
+			{
+				sprintf(risultato,"C - Carta");
+				trovato = true;
+			}
+		}
+		// metodo orb
+		if(trovato == false) // se non è escuso, passo al video
+		{
+			r = imageDetection();
+			if(r != "")
+			{
+				sprintf(risultato,"%s",r.c_str());
+				trovato = true;
+			}
+		}
+	
+	}
+        
+  RS232_cputs(cport_nr_arduino, risultato);
   printf("Mando responso a arduino \n");
 
    // STEP 8) ASPETTO CHE ARDUINO MI DICA DI AVER  GETTATO RIFIUTO E FATTO HOMING
@@ -276,7 +312,7 @@ while(true)
 
   // STEP 9) SALVO I DATI NEL CLOUD
 
-  salva_dati_thingspeack();
+  salva_dati_thingspeack(codice_tessera_hex,risultato,peso);
 
   cout << "FINE" << endl;
 
@@ -312,9 +348,24 @@ while(true)
 
   /////////////////////////////////////////////////////////////////////
 
+
+  /////////////////////////////////////////////////////////////////////
+
+  // FUNZIONI APPOGGIO
+  // Legge le immagini dal disco
+
+  /////////////////////////////////////////////////////////////////////
+
+
 void readImages()
 {
+    // per EMD
+    bg=imread("img/sfondo.jpg");
 
+    carta[0] = imread( "img/cartamarroneok.jpg", 1 );
+    carta[1] = imread( "img/cartamarroneok.jpg", 1 ); // sostituire con carta bianca
+    
+    // per ORB
   img_object_data[0] = imread("img/mk.jpg" , CV_LOAD_IMAGE_GRAYSCALE );
   nomiRifiuti[0] = "Milka";
   img_object_data[1] = imread("img/cr2.jpg" , CV_LOAD_IMAGE_GRAYSCALE );
@@ -336,9 +387,7 @@ void readImages()
 
 	for (int i=0;i< maxImages;i++)
 	{
-		/*detector->detect(img_object_data[i], keypoints_object[i]);
-		extractor->compute(img_object_data[i], keypoints_object[i], descriptors_object[i] );
-		*/
+	
 		detector->detectAndCompute(img_object_data[i], noArray(), keypoints_object[i], descriptors_object[i]);
 		/*if(descriptors_object[i].type()!=CV_32F) {
           descriptors_object[i].convertTo(descriptors_object[i], CV_32F);
@@ -348,28 +397,18 @@ void readImages()
 	}
 }
 
+  /////////////////////////////////////////////////////////////////////
+
+  // FUNZIONI APPOGGIO
+  // Acquisisce immagini da webcam
+
+  /////////////////////////////////////////////////////////////////////
+
 void captureImages(int cam)
 {
 
 	cout << "Inizio cattura img";
-	/*try
-	{
-		if(!cap.open(cam))
-		{
-			cout << "Errore apertura cam " << cam;
-        }
-    }
-    catch(cv::Exception& e)
-    {
-		sleep(3000);
-		if(!cap.open(cam))
-		{
-			cout << "Errore apertura cam " << cam;
-			return;
-        }
-	}
 
-*/
     try
     {
       for(int i=0;i<10;i++) cap >> img_scene[0];
@@ -381,22 +420,7 @@ void captureImages(int cam)
 
 
     }
-    /*
-    // controllo in range
 
-    Mat test2_mask,hsv_test2;
-    cvtColor( img_scene[2], hsv_test2, COLOR_BGR2HSV );
-
-    inRange(hsv_test2, Scalar(25, 15, 50), Scalar(33, 255, 255), test2_mask); // valore per fonzie con percentuali intorno al 15
-    //inRange(hsv_test2, Scalar(10, 100, 100), Scalar(20, 255, 255), test2_mask); // valore per croccantelle con percentuali intorno al 15
-
-    double pixel = countNonZero(test2_mask); //  307200 pixel totali per immagini 640 x 480
-    cout << "non zero:" << pixel << endl;
-
-    double perc = pixel*100/307200;
-    if (perc > 15) return 5;
-
-    */
 	cout << "immagini catturate";
 	for (int i=0;i< 3;i++)
 	{
@@ -408,14 +432,16 @@ void captureImages(int cam)
         }*/
 
 	}
-	//imshow("test",img_scene[0]);
-
-
-    //waitKey(0);
-
+	
 }
 
+  /////////////////////////////////////////////////////////////////////
 
+  // FUNZIONI APPOGGIO
+  // Cotrollo omografia per orb
+
+  /////////////////////////////////////////////////////////////////////
+  
 bool niceHomography(Mat* H)
 {
 	const double det = H->at<double>(0,0)* H->at<double>(1,1)-H->at<double>(1,0)* H->at<double>(0,1);
@@ -439,6 +465,14 @@ double homographyRating(Mat* H)
     return det;
 
 }
+
+  /////////////////////////////////////////////////////////////////////
+
+  // FUNZIONI APPOGGIO
+  // Trova il massimo valore nella matrice dei determinanti per ORB
+
+  /////////////////////////////////////////////////////////////////////
+  
 int findMaxIndex()
 {
 
@@ -469,10 +503,18 @@ int findMaxIndex()
     return indice;
 
 }
+
+  /////////////////////////////////////////////////////////////////////
+
+  // FUNZIONI APPOGGIO
+  // calcola EMD
+
+  /////////////////////////////////////////////////////////////////////
+  
 bool calcolaEmd()
 {
 
-    Mat bg;
+    
     Mat src_base, hsv_base;
     Mat src_test1, hsv_test1;
     Mat src_test2, hsv_test2;
@@ -480,7 +522,7 @@ bool calcolaEmd()
 
 
     int imgCarta=2;
-    Mat carta[imgCarta];
+   
     Mat scene[3];
     Mat hsv_carta[imgCarta];
     Mat hsv_scene[3];
@@ -488,14 +530,11 @@ bool calcolaEmd()
     Mat mask_scene[3];
 
     // carico immagine sfondo
-    bg=imread("sfondo.jpg");
 
-    carta[0] = imread( "cartamarroneok.jpg", 1 );
-    carta[1] = imread( "cartamarroneok.jpg", 1 ); // sostituire con carta bianca
 
     for(int i=0;i<imgCarta;i++)
       {
-        carta[i] = carta[i] - bg;
+        carta[i] = carta[i] - bg; // correggere la sottrazione
 
       /// Converto in HSV
         cvtColor( carta[i], hsv_carta[i], COLOR_BGR2HSV );
@@ -575,7 +614,6 @@ bool calcolaEmd()
     if(i>0){
 
         float emdResult = EMD(sig[0],sig[i],cv::DIST_L1);
-        cout << "Risultato emd: " << emdResult;
         if (emdResult<4) return true;
       }
     }
@@ -586,13 +624,15 @@ bool calcolaEmd()
 return false;
 }
 
-void salva_dati_thingspeack()
+  /////////////////////////////////////////////////////////////////////
+
+  // CHIAMATA CURL PER THINGSPEACK
+	// da completare
+  /////////////////////////////////////////////////////////////////////
+  
+void salva_dati_thingspeack(string codice_tessera, string mat, float peso)
 {
-  /////////////////////////////////////////////////////////////////////
 
-  // CHIAMATA CURL
-
-  /////////////////////////////////////////////////////////////////////
 
   CURL *curl;
   CURLcode res;
@@ -612,7 +652,13 @@ void salva_dati_thingspeack()
     curl_easy_cleanup(curl);
   }
 }
+  /////////////////////////////////////////////////////////////////////
 
+  // FUNZIONI APPOGGIO
+  // Esplode una stringa
+
+  /////////////////////////////////////////////////////////////////////
+  
 std::vector<std::string> explode(std::string const & s, char delim)
 {
     std::vector<std::string> result;
@@ -625,6 +671,14 @@ std::vector<std::string> explode(std::string const & s, char delim)
 
     return result;
 }
+
+  /////////////////////////////////////////////////////////////////////
+
+  // FUNZIONI APPOGGIO
+  // Legge file configurazione
+
+  /////////////////////////////////////////////////////////////////////
+  
 void readConfig()
 {
 	ifstream fp;
@@ -645,8 +699,45 @@ void readConfig()
     cport_nr = atof(v[1].c_str()); 	
     
     fp.close();
+    
+    // opzionale 
+    /*
+    unsigned char str_poll[BUF_SIZE]; 
+   while(1)
+   {
+    int n = RS232_PollComport(25, str_poll, (int)BUF_SIZE);
+    if(n > 0){
+            str_poll[n] = 0;
+            	if(str_poll[0]=='a' && str_poll[1]=='r')
+	{
+		cport_nr_arduino=25;
+		cport_nr=24;
+	}
+	else
+	{
+	    cport_nr_arduino=24;
+		cport_nr=25;
+	}
+	break;
+	}
+	usleep(1000000);
+
+}
+	printf("Ricevuto: %s",str_poll);*/
+	 
+   
 	
 }
+
+
+  /////////////////////////////////////////////////////////////////////
+
+  // FUNZIONI APPOGGIO
+  // Controlli iniziali
+
+  /////////////////////////////////////////////////////////////////////
+  
+  
 int checkAll()
 {
   if(RS232_OpenComport(cport_nr, bdrate, mode))
@@ -678,4 +769,109 @@ int checkAll()
         }
 	}
 
+}
+  /////////////////////////////////////////////////////////////////////
+
+  // FUNZIONI APPOGGIO
+  // Applica quickwins basati sul colore prevalente  dell'oggetto
+
+  /////////////////////////////////////////////////////////////////////
+string colorQuickWin()
+{
+    
+
+    string ris="";
+    double pixel; 
+    double perc;
+    Mat test2_mask,hsv_test2;
+    
+    // controllo sul terzo fotogramma
+    cvtColor( img_scene[2], hsv_test2, COLOR_BGR2HSV );
+
+	// da ripetere per ogni prodotto
+	
+    inRange(hsv_test2, Scalar(25, 15, 50), Scalar(33, 255, 255), test2_mask); // valore per fonzie con percentuali intorno al 15
+    pixel = countNonZero(test2_mask); //  307200 pixel totali per immagini 640 x 480
+    perc = pixel*100/307200;
+    if (perc > 15) 
+    {
+		ris = "P - Fonzies"; 
+		return ris;
+	}
+
+	// fine da ripetere per ogni prodotto
+
+	//inRange(hsv_test2, Scalar(10, 100, 100), Scalar(20, 255, 255), test2_mask); // valore per croccantelle con percentuali intorno al 15
+
+    return ris;
+ 
+}
+  /////////////////////////////////////////////////////////////////////
+
+  // FUNZIONI APPOGGIO
+  // Applica metodo ORB
+
+  /////////////////////////////////////////////////////////////////////
+  
+string imageDetection()
+{
+	string ris="";
+ // confronto ogni immagine del database con i tre fotogrammi acquisiti
+
+    for (int imgDb=0; imgDb<maxImages;imgDb++)
+    {
+		for (int imgIndex=1;imgIndex<3;imgIndex++)
+		{
+		// dichiaro e alloco alcuni oggetti che mi serviranno
+			std::vector< DMatch > matches;
+			double max_dist = 0; double min_dist = 100;
+   
+            matcher.match( descriptors_object[imgDb], descriptors_scene[imgIndex], matches );
+
+			for( int i = 0; i < descriptors_object[imgDb].rows; i++ )
+			{ double dist = matches[i].distance;
+				if( dist < min_dist ) min_dist = dist;
+				if( dist > max_dist ) max_dist = dist;
+			}
+
+			std::vector< DMatch > good_matches;
+
+			for( int i = 0; i < descriptors_object[imgDb].rows; i++ )
+			{ if( matches[i].distance <= 3*min_dist )
+            { good_matches.push_back( matches[i]); }
+			}
+
+			std::vector<Point2f> obj;
+			std::vector<Point2f> scene;
+
+			for( int i = 0; i < good_matches.size(); i++ )
+			{
+          
+				obj.push_back( keypoints_object[imgDb][ good_matches[i].queryIdx ].pt );
+				scene.push_back( keypoints_scene[imgIndex][ good_matches[i].trainIdx ].pt );
+			}
+        
+			if(good_matches.size()>4)
+			{
+				Mat H = findHomography( obj, scene, CV_RANSAC );
+	            if((niceHomography(&H) == true) || (min_dist<100)) 
+				{	
+					determinanti[imgDb][imgIndex] = homographyRating(&H);
+				}
+			}
+        
+		} 
+	}
+
+	int index = findMaxIndex();
+	if((index == -1) || (maxFound < 0.1))
+	{
+		ris="";
+	}
+	else
+	{
+
+		ris = "P - " + nomiRifiuti[index];
+    }
+  return ris;
 }
