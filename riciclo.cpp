@@ -123,7 +123,7 @@ int main()
   /////////////////////////////////////////////////////////////////////
 
      
-     readConfig(); // lettura file testuale di configurazione
+     readConfig(); // lettura file testuale di configurazione - probing
 	// open cv
 
 	f2d= ORB::create();
@@ -142,16 +142,17 @@ int main()
   // INZIO LOOP PRINIPALE
 
   /////////////////////////////////////////////////////////////////////
-  cout << "Ready to go!" << endl << flush;
+	
+	cout << "Ready to go!" << endl << flush;
 
-while(true)
-{
+	while(true)
+	{
 
   // INIZIALIZZO VARIABILI PER I VALORI OTTENUTI DA ARDUINO:
 
-  float peso = 0.0;
-  float metallo= 0.0;
-  float uv= 0.0;
+		float peso = 0.0;
+		float metallo= 0.0;
+		float uv= 0.0;
 
   /////////////////////////////////////////////////////////////////////
 
@@ -159,19 +160,19 @@ while(true)
 
   /////////////////////////////////////////////////////////////////////
 
-  while(1)
-  {
-	cout << "Pool rfid" << endl << flush;
+		while(1)
+		{
+			cout << "Pool rfid" << endl << flush;
 
-	int n = RS232_PollComport(cport_nr, str_recv, (int)BUF_SIZE);
-    if(n > 0){
-        str_recv[n] = 0;
-        sprintf(codice_tessera_hex,"%02X%02X%02X",str_recv[6],str_recv[7],str_recv[8]);
-        printf("CODICE TESSERA PER DATABASE:%s \n",codice_tessera_hex);
-        break; // esco dal ciclo se tessera strisciata
-    }
-	usleep(1000000);  // 1 secondo di pausa
-   } // fine ciclo lettura su tessera
+			int n = RS232_PollComport(cport_nr, str_recv, (int)BUF_SIZE);
+			if(n > 0){
+				str_recv[n] = 0;
+				sprintf(codice_tessera_hex,"%02X%02X%02X",str_recv[6],str_recv[7],str_recv[8]);
+				printf("CODICE TESSERA PER DATABASE:%s \n",codice_tessera_hex);
+				break; // esco dal ciclo se tessera strisciata
+			}
+			usleep(1000000);  // 1 secondo di pausa
+		} // fine ciclo lettura su tessera
 
 
 
@@ -183,139 +184,137 @@ while(true)
 
   // STEP 1)  DICO A ARDUINO DI BLOCCARE LO SPORTELLO E RIMANERE IN ATTESA DELLA BILANCIA
 
-  RS232_cputs(cport_nr_arduino, " "); //mando l'ardu i attesa del peso
+		RS232_cputs(cport_nr_arduino, " "); //mando l'ardu i attesa del peso
 
-  printf("Invio ad arduino comando per sblocco sportello  e il peso \n");
-  usleep(1000000);  /* aspetto un secondo */
+		printf("Invio ad arduino comando per sblocco sportello  e il peso \n");
+		usleep(1000000);  /* aspetto un secondo */
 
   // STEP 2-3) RIMANGO IN ATTESA CHE ARDUINO MI RESTITUISCA IL PESO
   // E TERMINI MEZZO GIRO
 
-  while(1)
-  {
-    int n = RS232_PollComport(cport_nr_arduino, str_recv, (int)BUF_SIZE);
-	if(n > 0){
-		str_recv[n] = 0;
-	
-		//printf("Ricevuto: %s %c %c",str_recv,str_recv[0],str_recv[n-2]);
-		if((str_recv[n-4] != 'p') || (str_recv[n-3] != 'e')) continue;
-      str_recv[n-2] = 0;
-      std::string str;
-	  str.append(reinterpret_cast<const char*>(str_recv));
-      peso = atof(str.c_str());
-      break;
-    }
-	usleep(1000000);  /* pausa */
-  }
-  cout <<  "Peso otteuto: " << peso << endl ;
-  cout << "i  attesa giro teminato";
+		while(1)
+		{
+			int n = RS232_PollComport(cport_nr_arduino, str_recv, (int)BUF_SIZE);
+			if(n > 0){
+				str_recv[n] = 0;
+			
+				if((str_recv[n-4] != 'p') || (str_recv[n-3] != 'e')) continue;
+				str_recv[n-2] = 0;
+				std::string str;
+				str.append(reinterpret_cast<const char*>(str_recv));
+				peso = atof(str.c_str());
+				break;
+			}
+		usleep(1000000);  /* pausa */
+		}
+		cout <<  "Peso otteuto: " << peso << endl ;
+		cout << "i  attesa giro teminato";
 
 
-    usleep(2000000);  /* aspetto un secondo */
+		usleep(2000000);  /* aspetto un secondo */
 
     // STEP 4) FOTO
 
-    captureImages(0);
+		captureImages(0);
 
     // STEP 5) COMUNICO AD ARDUINO DI AVER FATTO LE FOTO
 
-    RS232_cputs(cport_nr_arduino, " ");
+		RS232_cputs(cport_nr_arduino, " ");
 
-    printf("Invio ad arduino comado fine foto \n");
-    usleep(1000000);
+		printf("Invio ad arduino comado fine foto \n");
+		usleep(1000000);
 
     // STEP 6) RIMANGO I ATTESA CHE ARDUINO MI COMUICHI I VALORI DEI SENSORI METALLI E UV
-    while(1)
-    {
-	//aspetto che arduino mi restituisca  il metallo E ALTRI VALORI
+		while(1)
+		{
+		//aspetto che arduino mi restituisca  il metallo E ALTRI VALORI
 
-        int n = RS232_PollComport(cport_nr_arduino, str_recv, (int)BUF_SIZE);
-        if(n > 0){
-            str_recv[n] = 0;
-            printf("Ricevuto: %s",str_recv);
-            std::string str;
-            str.append(reinterpret_cast<const char*>(str_recv));
-            std::vector<std::string> v = explode(str, '|');
-            metallo = atof(v[0].c_str());   // metallo
-            uv = atof(v[1].c_str());        // trasparenza
-            break; // esce
-        }
-        usleep(1000000);  // pausa
-    }
+			int n = RS232_PollComport(cport_nr_arduino, str_recv, (int)BUF_SIZE);
+			if(n > 0){
+				str_recv[n] = 0;
+				printf("Ricevuto: %s",str_recv);
+				std::string str;
+				str.append(reinterpret_cast<const char*>(str_recv));
+				std::vector<std::string> v = explode(str, '|');
+				metallo = atof(v[0].c_str());   // metallo
+				uv = atof(v[1].c_str());        // trasparenza
+				break; // esce
+			}
+			usleep(1000000);  // pausa
+		}
 
-  cout <<  "DATI OTTENUTI: " << metallo << "  " << uv << endl ;
+		cout <<  "DATI OTTENUTI: " << metallo << "  " << uv << endl ;
 
   // STEP 7)  ELABORAZIONI, ARDUINO RIMANE IN ATTESA DI RESPONSO
-    bool trovato = false;
-    char risultato[100];
-    sprintf(risultato,"I - Indifferenziato");
+		bool trovato = false;
+		char risultato[100];
+		sprintf(risultato,"I - Indifferenziato");
     
-    if((metallo > 0.00) && (peso > 40) && (peso < 50))
-    {
-		sprintf(risultato,"M - Lattina");
-		trovato = true;
-	}
-	
-    if((uv > 0.00) && (peso > 40) && (peso < 50) && (trovato ==false))
-    {
-		sprintf(risultato,"P - Bottiglia di plastica");
-		trovato = true;
-	}
-	
-	if(trovato == false) 
-	{
-		string r = colorQuickWin();
-		if(r != "")
+		if((metallo > 0.00) && (peso > 40) && (peso < 50))
 		{
-			sprintf(risultato,"%s",r.c_str());
+			sprintf(risultato,"M - Lattina");
 			trovato = true;
 		}
-		
-		
-		// vedo se è carta
+	
+		if((uv > 0.00) && (peso > 40) && (peso < 50) && (trovato ==false))
+		{
+			sprintf(risultato,"P - Bottiglia di plastica");
+			trovato = true;
+		}
+	
 		if(trovato == false) 
 		{
-			if((calcolaEmd()==true) && (peso > 40) && (peso < 50))
-			{
-				sprintf(risultato,"C - Carta");
-				trovato = true;
-			}
-		}
-		// metodo orb
-		if(trovato == false) // se non è escuso, passo al video
-		{
-			r = imageDetection();
+			string r = colorQuickWin();
 			if(r != "")
 			{
 				sprintf(risultato,"%s",r.c_str());
 				trovato = true;
 			}
-		}
+		
+		
+			// vedo se è carta
+			if(trovato == false) 
+			{
+				if((calcolaEmd()==true) && (peso > 40) && (peso < 50))
+				{
+					sprintf(risultato,"C - Carta");
+					trovato = true;
+				}
+			}
+		// metodo orb
+			if(trovato == false) // se non è escuso, passo al video
+			{
+				r = imageDetection();
+				if(r != "")
+				{
+					sprintf(risultato,"%s",r.c_str());
+					trovato = true;
+				}
+			}
 	
-	}
+		}
         
-  RS232_cputs(cport_nr_arduino, risultato);
-  printf("Mando responso a arduino \n");
+		RS232_cputs(cport_nr_arduino, risultato);
+		printf("Mando responso a arduino \n");
 
    // STEP 8) ASPETTO CHE ARDUINO MI DICA DI AVER  GETTATO RIFIUTO E FATTO HOMING
-  while(1)
-  {
-	int n = RS232_PollComport(cport_nr_arduino, str_recv, (int)BUF_SIZE);
-	if(n > 0){
-
-       break; // esce
-
-	}
-    usleep(1000000);
-  }
+		
+		while(1)
+		{
+			int n = RS232_PollComport(cport_nr_arduino, str_recv, (int)BUF_SIZE);
+			if(n > 0){ 
+				break; // esce
+				}
+			usleep(1000000);
+		}
 
   // STEP 9) SALVO I DATI NEL CLOUD
 
-  salva_dati_thingspeack(codice_tessera_hex,risultato,peso);
+		salva_dati_thingspeack(codice_tessera_hex,risultato,peso);
 
-  cout << "FINE" << endl;
+		cout << "FINE" << endl;
 
-  break;
+		break;
 } // fine loop principale
 
 
@@ -626,7 +625,7 @@ return false;
   /////////////////////////////////////////////////////////////////////
 
   // CHIAMATA CURL PER THINGSPEACK
-	// da completare
+
   /////////////////////////////////////////////////////////////////////
   
 void salva_dati_thingspeack(string codice_tessera, string mat, float peso)
@@ -638,8 +637,38 @@ void salva_dati_thingspeack(string codice_tessera, string mat, float peso)
 
   curl = curl_easy_init();
   if(curl) {
-    curl_easy_setopt(curl, CURLOPT_URL, "https://api.thingspeak.com/update?api_key=786D9K3E371MIWY6&field1=15");
-
+	  
+	  String invio = "https://api.thingspeak.com/update?api_key=";
+	  if(codice_tessera=="3BF827")
+	  {
+		  invio +="1BDO257EXYZC2O51"; // api key
+		
+	  }
+	  else
+	  {
+		   invio +="GNB4H517VAVEHAYU"; // api key
+		
+	  }
+	  if(mat[0] == 'C')
+	  {
+		  invio = invio + "&field1=" + peso;
+	  }
+	  
+	  if(mat[0] == 'M')
+	  {
+		  invio = invio + "&field2=" + peso;
+	  }
+	  	  if(mat[0] == 'P')
+	  {
+		  invio = invio + "&field3=" + peso;
+	  }
+	  	  if(mat[0] == 'I')
+	  {
+		  invio = invio + "&field4=" + peso;
+	  }  
+    
+    curl_easy_setopt(curl, CURLOPT_URL, invio.c_str());
+	  
     curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
 
     res = curl_easy_perform(curl);
