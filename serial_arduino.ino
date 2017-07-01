@@ -23,14 +23,14 @@ byte dire2Pin = 7;
 byte dire1Pin = 6;
 byte slee2Pin = 5;
 byte slee1Pin = 4;
-byte step2Pin = 3;
+byte step2Pin = 3; 
 byte step1Pin = 2;
 byte OptoLimit1=10;
 byte OptoLimit2=11;
 byte Homing1=3; // rimettere a 0
 byte Homing2=3;
 
-int numberOfSteps = 1300; // mezzo giro 6300
+int numberOfSteps = 6300; // mezzo giro 6300
 
 int pulseWidthMicros = 450;  // microseconds
 int millisbetweenSteps = 1; // milliseconds - or try 1000 for slower steps
@@ -50,7 +50,7 @@ void muoviPosizioneCam();
 void servoVaiA(int pos)
 {
 
-  for(int i=0;i< pos;i+=5)
+  for(int i=90;i< pos;i+=5)
   {
     myservo.write(i);        
     delay(50);                           
@@ -62,7 +62,7 @@ void setup() {
 
   Serial.begin(57600); // opens serial port, sets data rate to 57600 baud
 
-
+Serial.println("ar");
               
     
   // inizializzazione stepper e homing + inizializza servo
@@ -78,17 +78,24 @@ void setup() {
   //Serial.println(pesoiniziale);
   
   pinMode(LED_BUILTIN, OUTPUT);
-  
+
   
 }
 
 void loop() {
+  
+
+ 
+
+
+  
 while(true){
-///// versione alterativa
+///// version
 
  // 
- while (Serial.available() <= 0) {
 
+ while (Serial.available() <= 0) {
+  
   delay(1000);
  }
   while (Serial.available() > 0) { char incomingByte = Serial.read(); } // consumo

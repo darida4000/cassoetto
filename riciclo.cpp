@@ -107,9 +107,6 @@ int main()
 {
 	cout << "Accensione" << endl << flush;
 	
-	readConfig(); // lettura file testuale di configurazione
-  
-
   /////////////////////////////////////////////////////////////////////
 
   // CONTROLLI
@@ -125,6 +122,8 @@ int main()
 
   /////////////////////////////////////////////////////////////////////
 
+     
+     readConfig(); // lettura file testuale di configurazione
 	// open cv
 
 	f2d= ORB::create();
@@ -700,30 +699,36 @@ void readConfig()
     
     fp.close();
     
-    // opzionale 
-    /*
-    unsigned char str_poll[BUF_SIZE]; 
+   int p=24;
+    
    while(1)
    {
-    int n = RS232_PollComport(25, str_poll, (int)BUF_SIZE);
+	cout << "Cerco arduino in porta " << p << endl << flush;
+
+	int n = RS232_PollComport(p, str_recv, (int)BUF_SIZE);
     if(n > 0){
-            str_poll[n] = 0;
-            	if(str_poll[0]=='a' && str_poll[1]=='r')
-	{
-		cport_nr_arduino=25;
-		cport_nr=24;
+        str_recv[n] = 0;
+		cout << "Arduino è sulla "<< p  << endl << flush;
+		
+        break; 
+    }
+    p++;
+    if(p==26) p = 24;
+	usleep(1000000);  // 1 secondo di pausa
+   } // fine ciclo lettura su tessera
+
+    if(p==24)
+    {
+		cport_nr_arduino=24;
+		cport_nr=25;
 	}
 	else
 	{
-	    cport_nr_arduino=24;
-		cport_nr=25;
+		cport_nr_arduino=25;
+		cport_nr=24;
+		
 	}
-	break;
-	}
-	usleep(1000000);
 
-}
-	printf("Ricevuto: %s",str_poll);*/
 	 
    
 	
