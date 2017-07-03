@@ -106,6 +106,12 @@ BFMatcher matcher(NORM_HAMMING);
 int main()
 {
 	cout << "Accensione" << endl << flush;
+
+
+
+int c =RS232_GetPortnr("ttyACM0");
+cout << c;
+return 0;
 	
   /////////////////////////////////////////////////////////////////////
 
@@ -121,14 +127,14 @@ int main()
   // INIZIALIZZAZIONI
 
   /////////////////////////////////////////////////////////////////////
-
-     
-     readConfig(); // lettura file testuale di configurazione - probing
 	// open cv
 
 	f2d= ORB::create();
     int minHessian = 400;
     detector = ORB::create(ORB_PRECISION);
+     
+     readConfig(); // lettura file testuale di configurazione - probing
+
 	
 
 	// legge tutte le immagini dal disco
@@ -405,7 +411,7 @@ void readImages()
 void captureImages(int cam)
 {
 
-	cout << "Inizio cattura img";
+	cout << "Inizio cattura img" << endl << flush;
 
     try
     {
@@ -419,7 +425,7 @@ void captureImages(int cam)
 
     }
 
-	cout << "immagini catturate";
+	cout << "immagini catturate" << endl << flush;
 	for (int i=0;i< 3;i++)
 	{
 
@@ -757,7 +763,8 @@ void readConfig()
 		cport_nr=24;
 		
 	}
-
+	
+	cport_nr_arduino=RS232_GetPortnr("arduino");
 	 
    
 	

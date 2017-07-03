@@ -27,10 +27,10 @@ byte step2Pin = 3;
 byte step1Pin = 2;
 byte OptoLimit1=10;
 byte OptoLimit2=11;
-byte Homing1=3; // rimettere a 0
-byte Homing2=3;
+byte Homing1=0; // rimettere a 0
+byte Homing2=0;
 
-int numberOfSteps = 6300; // mezzo giro 6300
+int numberOfSteps = 6100; // mezzo giro 6300
 
 int pulseWidthMicros = 450;  // microseconds
 int millisbetweenSteps = 1; // milliseconds - or try 1000 for slower steps
@@ -187,7 +187,7 @@ void muoviPosizioneCam()
 
 
   digitalWrite(dire1Pin, LOW); // disco sotto
-  digitalWrite(dire2Pin, LOW);
+  digitalWrite(dire2Pin, HIGH);
   delay(1000);
   
  for (int n = 0; n < numberOfSteps; n++) {
@@ -230,7 +230,7 @@ void homing()
   digitalWrite(enbPin, LOW);
   delay(1000);
   digitalWrite(dire1Pin, HIGH);
-  digitalWrite(dire2Pin, HIGH);
+  digitalWrite(dire2Pin, LOW);
   delay(1000);
   //for (int n = 0; n < numberOfSteps; n++) {
   while(Homing1!=3 || Homing2!=3) {
