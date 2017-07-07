@@ -1,2 +1,1 @@
-# cassoetto
-# cassoetto
+# Software di gestione contenitore rifiuti intelligente
