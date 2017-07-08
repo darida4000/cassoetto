@@ -27,6 +27,7 @@
 #include <sstream>
 #include <utility>
 
+
 #include "rs232.h"
 #include <curl/curl.h>
 
@@ -106,12 +107,13 @@ BFMatcher matcher(NORM_HAMMING);
 int main()
 {
 	cout << "Accensione" << endl << flush;
-
-
+/*
+salva_dati_thingspeack("3BF827", "C ", 13.56);
+return 0;
 
 int c =RS232_GetPortnr("ttyACM0");
 cout << c;
-return 0;
+return 0;*/
 	
   /////////////////////////////////////////////////////////////////////
 
@@ -643,11 +645,15 @@ void salva_dati_thingspeack(string codice_tessera, string mat, float peso)
 
   curl = curl_easy_init();
   if(curl) {
+	  std::ostringstream p;
+      p << peso;
+	   std::string pesoS = p.str();
+	  string invio;
+	  invio = "https://api.thingspeak.com/update?api_key=";
 	  
-	  String invio = "https://api.thingspeak.com/update?api_key=";
 	  if(codice_tessera=="3BF827")
 	  {
-		  invio +="1BDO257EXYZC2O51"; // api key
+		  invio += "1BDO257EXYZC2O51"; // api key
 		
 	  }
 	  else
@@ -657,21 +663,22 @@ void salva_dati_thingspeack(string codice_tessera, string mat, float peso)
 	  }
 	  if(mat[0] == 'C')
 	  {
-		  invio = invio + "&field1=" + peso;
+		  invio =invio + "&field1=1" + pesoS;
 	  }
 	  
 	  if(mat[0] == 'M')
 	  {
-		  invio = invio + "&field2=" + peso;
+		invio =invio + "&field1=2" + pesoS;
 	  }
 	  	  if(mat[0] == 'P')
 	  {
-		  invio = invio + "&field3=" + peso;
+		  invio =invio + "&field1=3" + pesoS;
 	  }
 	  	  if(mat[0] == 'I')
 	  {
-		  invio = invio + "&field4=" + peso;
+		  invio =invio + "&field1=4" + pesoS;
 	  }  
+	  //cout << invio<< endl << flush;
     
     curl_easy_setopt(curl, CURLOPT_URL, invio.c_str());
 	  
@@ -679,9 +686,9 @@ void salva_dati_thingspeack(string codice_tessera, string mat, float peso)
 
     res = curl_easy_perform(curl);
     // controllo errori chiamata
-    //if(res != CURLE_OK) cout << "Errore";
-   //   fprintf(stderr, "errore: %s\n",
-              //curl_easy_strerror(res));
+   /* if(res != CURLE_OK) cout << "Errore";
+      fprintf(stderr, "errore: %s\n",
+              curl_easy_strerror(res));*/
 
     curl_easy_cleanup(curl);
   }
