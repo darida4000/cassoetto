@@ -772,6 +772,7 @@ void readConfig()
 	}
 	
 	cport_nr_arduino=RS232_GetPortnr("arduino");
+	cport_nr=RS232_GetPortnr("rfid");
 	 
    
 	
