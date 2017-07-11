@@ -45,6 +45,7 @@
 #define IMG_OBJECT 8 // immagini nel database
 #define IMG_SCENE 3 // numero fotogrammi
 #define ORB_PRECISION 5000 // precisione orb
+#define SOGLIA_SFONDO 20 // soglia per eliminazione sfondo
 
 using namespace cv;
 using namespace std;
@@ -56,7 +57,7 @@ double homographyRating(Mat* H);
 void readImages();
 int findMaxIndex();
 void captureImages(int cam);
-bool calcolaEmd();
+string calcolaEmd();
 void  salva_dati_thingspeack(string codice_tessera, string mat, float peso);
 std::vector<std::string> explode(std::string const & s, char delim);
 void readConfig();
@@ -256,6 +257,7 @@ return 0;*/
   // STEP 7)  ELABORAZIONI, ARDUINO RIMANE IN ATTESA DI RESPONSO
 		bool trovato = false;
 		char risultato[100];
+		string r;
 		sprintf(risultato,"I - Indifferenziato");
     
 		if((metallo > 0.00) && (peso > 40) && (peso < 50))
@@ -269,38 +271,41 @@ return 0;*/
 			sprintf(risultato,"P - Bottiglia di plastica");
 			trovato = true;
 		}
-	
-		if(trovato == false) 
+	/////////////////////////////////////////
+		if(trovato == false)
 		{
-			string r = colorQuickWin();
+			r = colorQuickWin();
 			if(r != "")
 			{
 				sprintf(risultato,"%s",r.c_str());
 				trovato = true;
 			}
-		
-		
-			// vedo se è carta
-			if(trovato == false) 
-			{
-				if((calcolaEmd()==true) && (peso > 40) && (peso < 50))
-				{
-					sprintf(risultato,"C - Carta");
-					trovato = true;
-				}
-			}
-		// metodo orb
-			if(trovato == false) // se non è escuso, passo al video
-			{
-				r = imageDetection();
-				if(r != "")
-				{
-					sprintf(risultato,"%s",r.c_str());
-					trovato = true;
-				}
-			}
-	
 		}
+		
+		// controllo con istogramma
+		if(trovato == false) 
+		{
+			r = calcolaEmd();
+			if(r!="" )
+			{
+				sprintf(risultato,"%s",r.c_str());
+				trovato = true;
+			}
+		}
+	
+	// metodo orb
+		if(trovato == false) // se non è escuso, passo al video
+		{
+			r = imageDetection();
+			if(r != "")
+			{
+				sprintf(risultato,"%s",r.c_str());
+				trovato = true;
+			}
+		}	
+	
+	
+		
         
 		RS232_cputs(cport_nr_arduino, risultato);
 		printf("Mando responso a arduino \n");
@@ -426,7 +431,17 @@ void captureImages(int cam)
 
 
     }
+	Mat maschera;
+    Mat backupFrame;
+	for(int i=0;i<IMG_SCENE ;i++)
+	{
+		backupFrame = img_scene[i].clone();
+		cvtColor( img_scene[i], img_scene[i], cv::COLOR_BGR2GRAY  );
+		absdiff(bg,img_scene[i],maschera);
+		threshold(maschera,maschera,SOGLIA_SFONDO,255,THRESH_BINARY);
+		backupFrame.copyTo(img_scene[i], maschera);
 
+	}
 	cout << "immagini catturate" << endl << flush;
 	for (int i=0;i< 3;i++)
 	{
@@ -517,17 +532,17 @@ int findMaxIndex()
 
   /////////////////////////////////////////////////////////////////////
   
-bool calcolaEmd()
+string calcolaEmd()
 {
 
-    
+     string ris="";
     Mat src_base, hsv_base;
     Mat src_test1, hsv_test1;
     Mat src_test2, hsv_test2;
     Mat hsv_half_down;
 
 
-    int imgCarta=2;
+    int imgCarta=3;
    
     Mat scene[3];
     Mat hsv_carta[imgCarta];
@@ -535,12 +550,36 @@ bool calcolaEmd()
     Mat mask_carta[imgCarta];
     Mat mask_scene[3];
 
-    // carico immagine sfondo
+   
+	Mat maschera,mm;
+    Mat backupFrame;
+    
+    string s="";
+    string t="";
+	
+	// elimino lo sfondo da  immagini catturate
+	/*for(int i=0;i<IMG_SCENE ;i++)
+	{
+		backupFrame = img_scene[i].clone();
+		cvtColor( img_scene[i], img_scene[i], cv::COLOR_BGR2GRAY  );
+		absdiff(bg,img_scene[i],maschera);
+		threshold(maschera,maschera,40,255,THRESH_BINARY);
+		backupFrame.copyTo(img_scene[i], maschera);
 
-
+	}*/
+	
+	//waitKey(0);
+	
+	
+	//imshow("terzo  fotogramma",img_scene[1]);
+    	// elimino lo sfondo da  immagini di carta
     for(int i=0;i<imgCarta;i++)
       {
-        carta[i] = carta[i] - bg; // correggere la sottrazione
+        backupFrame = carta[i].clone();
+		cvtColor( carta[i], carta[i], cv::COLOR_BGR2GRAY  );
+		absdiff(bg,carta[i],maschera);
+		threshold(maschera,maschera,SOGLIA_SFONDO,255,THRESH_BINARY);
+		backupFrame.copyTo(carta[i], maschera);
 
       /// Converto in HSV
         cvtColor( carta[i], hsv_carta[i], COLOR_BGR2HSV );
@@ -550,11 +589,13 @@ bool calcolaEmd()
     inRange(hsv_carta[i], Scalar(0, 15, 50), Scalar(180, 255, 255), mask_carta[i]);
 
       }
+      //imshow("carta originaria",carta[0]);
+// waitKey(0);
 
     for(int i=0;i<3;i++)
       {
         scene[i] = img_scene[i].clone();
-        scene[i] = scene[i] - bg;
+        //scene[i] = scene[i] - bg;
         cvtColor( scene[i], hsv_scene[i], COLOR_BGR2HSV );
         inRange(hsv_scene[i], Scalar(0, 15, 50), Scalar(180, 255, 255), mask_scene[i]);
       }
@@ -591,45 +632,59 @@ bool calcolaEmd()
   // calcolo EMD
   for(int i=0;i<imgCarta;i++)   /// per ogni img carta
   {
-  for (int j=0;j<3;j++) // per ogni fotogramma
+	  
+  for (int j=1;j<3;j++) // per ogni fotogramma
   {
+	
   vector<cv::Mat> sig(3);
   MatND hist[2];
 
   hist[0] = hist_base[i].clone();
   hist[1] = hist_test[j].clone();
 
-  for(int i = 0;i<2;i++)
+  for(int ii = 0;ii<2;ii++)
   {
     vector <cv::Vec3f> sigv;
-    normalize( hist[i], hist[i], 1, 0, NORM_L1 );
+    normalize( hist[ii], hist[ii], 1, 0, NORM_L1 );
 
     for(int h=0;h<h_bins;h++)
     {
       for(int s=0;s< s_bins;s++)
        {
 
-        float bin_val=hist[i].at<float>(h,s);
+        float bin_val=hist[ii].at<float>(h,s);
         if(bin_val!=0) sigv.push_back(cv::Vec3f(bin_val,(float)h,(float)s));
 
       }
-      sig[i] =cv::Mat(sigv).clone().reshape(1);
+      sig[ii] =cv::Mat(sigv).clone().reshape(1);
 
 
     }
-    if(i>0){
+    if(ii>0){
 
-        float emdResult = EMD(sig[0],sig[i],cv::DIST_L1);
-        if (emdResult<4) return true;
-      }
+        float emdResult = EMD(sig[0],sig[ii],cv::DIST_L1);
+        cout << "EMD:" << emdResult << endl;
+        
+        switch(i)
+        {
+			case 0:	
+			if (emdResult< 1.48) return "C - Carta";
+			break;
+			case 1:	
+			if (emdResult< 1.5) return "C - Carta marrone";
+			break;
+			case 2:	
+			if (emdResult< 2.4) return "P - Retro bueno";
+			break;
+		}
+     }
     }
    }
  }
 
 
-return false;
+return ris;
 }
-
   /////////////////////////////////////////////////////////////////////
 
   // CHIAMATA CURL PER THINGSPEACK
@@ -828,7 +883,6 @@ int checkAll()
 string colorQuickWin()
 {
     
-
     string ris="";
     double pixel; 
     double perc;
@@ -842,19 +896,37 @@ string colorQuickWin()
     inRange(hsv_test2, Scalar(25, 15, 50), Scalar(33, 255, 255), test2_mask); // valore per fonzie con percentuali intorno al 15
     pixel = countNonZero(test2_mask); //  307200 pixel totali per immagini 640 x 480
     perc = pixel*100/307200;
-    if (perc > 15) 
+    cout << "percentuale" << perc << endl << flush;
+    if (perc > 7) 
     {
-		ris = "P - Fonzies"; 
+		ris = "P - Fonzies o TUC"; 
 		return ris;
 	}
+	cout << perc << endl << flush;
 
 	// fine da ripetere per ogni prodotto
 
-	//inRange(hsv_test2, Scalar(10, 100, 100), Scalar(20, 255, 255), test2_mask); // valore per croccantelle con percentuali intorno al 15
+
+	// da ripetere per ogni prodotto
+	
+    inRange(hsv_test2, Scalar(115, 100, 70), Scalar(125, 200, 200), test2_mask); // valore per milka con percentuali intorno al 15
+    pixel = countNonZero(test2_mask); //  307200 pixel totali per immagini 640 x 480
+    perc = pixel*100/307200;
+    cout << "percentuale M" << perc << endl << flush;
+    if (perc > 9) 
+    {
+		ris = "P - Milka"; 
+		return ris;
+	}
+	cout << perc << endl << flush;
+
+	// fine da ripetere per ogni prodotto
+	
 
     return ris;
  
 }
+
   /////////////////////////////////////////////////////////////////////
 
   // FUNZIONI APPOGGIO
