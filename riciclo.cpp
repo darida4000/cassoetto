@@ -207,9 +207,9 @@ int main()
 
   /////////////////////////////////////////////////////////////////////
 
-  // STEP 1)  DICO A ARDUINO DI BLOCCARE LO SPORTELLO E RIMANERE IN ATTESA DELLA BILANCIA
+  // STEP 1)  DICO A ARDUINO DI APRIRE LO SPORTELLO E RIMANERE IN ATTESA DELLA BILANCIA
 
-		RS232_cputs(cport_nr_arduino, "<OpDo>;"); // apertura lock e attesa di apertura chiusur sportello
+		RS232_cputs(cport_nr_arduino, "<OpDo>;"); // apertura lock e attesa di apertura chiusura sportello
 		
 		ack  = waitArduinoAck();
 		if (ack == false) 
@@ -220,12 +220,13 @@ int main()
 		 
 		printf("Invio ad arduino comando per sblocco sportello  e il peso \n");
 		usleep(1000000);  /* aspetto un secondo */
+		
+		
+		// STEP 2) CHIEDO  IL PESO E RIMANGO IN ATTESA CHE ARDUINO MI RESTITUISCA IL PESO
 				
 		RS232_cputs(cport_nr_arduino, "<gtWg>;");
 		
 
-		// STEP 2 RIMANGO IN ATTESA CHE ARDUINO MI RESTITUISCA IL PESO
- 
 		bool timeout = false;
 		while(1)
 		{
@@ -235,7 +236,7 @@ int main()
 				std::string str,str1;
 				str.append(reinterpret_cast<const char*>(str_recv));
 				
-				if (str[1] == 'K') // è arrivato <Ko>;
+				if (str[1] == 'K') // è arrivato <Ko>, il peso non è arrivato in 60 secondi;
 				{
 					timeout = true;
 					break;
@@ -253,6 +254,7 @@ int main()
 		usleep(1000000);  /* pausa */
 		}
 		
+		// STEP 2 bis CHIUSURA PORTA
 		
 		RS232_cputs(cport_nr_arduino, "<ClDo>;"); // chiusura porta
 		
@@ -265,7 +267,8 @@ int main()
 		
 		if (timeout == true)  continue; // non è attrerrato nulla sulla bilancia !
 	
-		
+		// STEP 3) CHIEDO  A ARDUINO DI POSIZIONARSI SOTTO CAM
+		 
 		RS232_cputs(cport_nr_arduino, "<PlCam>;"); // posizione webcam		
 		
 		ack  = waitArduinoAck();
@@ -276,13 +279,13 @@ int main()
 			continue;
 		}
 		
-		usleep(2000000);  /* aspetto un secondo */
+		usleep(1000000);  /* aspetto un secondo */
 
-    // STEP 4) FOTO
+    // STEP 4) FACCIO LE FOTO
 
 		//captureImages(0);
 
-    // STEP 5) COMUNICO AD ARDUINO DI AVER FATTO LE FOTO
+    // STEP 5) CHIEDO AD ARDUINO DI  MUOVERE IL BRACCIO INTERNO
 
 		RS232_cputs(cport_nr_arduino, "<StAr>;"); // sposto braccio	
 		
@@ -294,11 +297,10 @@ int main()
 			continue;
 		}
 		
+	// STEP 6) RIMANGO I ATTESA CHE ARDUINO MI COMUICHI I VALORI DEI SENSORI METALLI E UV	
 		
 		RS232_cputs(cport_nr_arduino, "<gtMe>;"); // richiedo sensore metalli
-		
-
-    // STEP 6) RIMANGO I ATTESA CHE ARDUINO MI COMUICHI I VALORI DEI SENSORI METALLI E UV
+    
 		while(1)
 		{		
 			int n = RS232_PollComport(cport_nr_arduino, str_recv, (int)BUF_SIZE);
@@ -347,6 +349,7 @@ int main()
 			usleep(1000000);  // pausa
 		}
 
+	// STEP 6 BIS) RIMETTO A POSTO IL BRACCETTO
 
 		RS232_cputs(cport_nr_arduino, "<HmAr>;"); // sposto braccio	
 		
@@ -414,21 +417,39 @@ int main()
 			}
 		}	
 	
-	
-		
         
-		RS232_cputs(cport_nr_arduino, risultato);
-		printf("Mando responso a arduino \n");
-
-   // STEP 8) ASPETTO CHE ARDUINO MI DICA DI AVER  GETTATO RIFIUTO E FATTO HOMING
+		//RS232_cputs(cport_nr_arduino, risultato);
 		
-		while(1)
+		cout <<  "Il risultato è:" << risultato << endl << flush;
+		
+		int can=-1;
+		string message;
+		if (risultato[0]  == 'I') message ="<PlPo>,0;";
+		else if (risultato[0]  == 'C') message ="<PlPo>,1;";
+		else if (risultato[0]  == 'P') message ="<PlPo>,2;";
+		else if (risultato[0]  == 'M') message ="<PlPo>,3;";
+		
+		RS232_cputs(cport_nr_arduino, message.c_str()); 
+		
+		
+   // STEP 8) ASPETTO CHE ARDUINO MI DICA DI AVER  GETTATO RIFIUTO 
+		
+		ack  = waitArduinoAck();
+
+		if (ack == false) 
 		{
-			int n = RS232_PollComport(cport_nr_arduino, str_recv, (int)BUF_SIZE);
-			if(n > 0){ 
-				break; // esce
-				}
-			usleep(1000000);
+			cout << "Errore nella comunicazione -> posizionamento piatto per cassonetto"<< endl;
+			continue;
+		}
+		
+		RS232_cputs(cport_nr_arduino, "<PlHom>;"); // posizione home		
+		
+		ack  = waitArduinoAck();
+
+		if (ack == false) 
+		{
+			cout << "Errore nella comunicazione -> posizionamento home"<< endl;
+			continue;
 		}
 
   // STEP 9) SALVO I DATI NEL CLOUD
@@ -437,7 +458,8 @@ int main()
 
 		cout << "FINE" << endl;
 
-		break;
+		break; // togliere
+		
 } // fine loop principale
 
 
