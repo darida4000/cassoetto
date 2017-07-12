@@ -89,7 +89,7 @@ std::vector<KeyPoint> keypoints_object[IMG_OBJECT], keypoints_scene[IMG_SCENE];
 String nomiRifiuti[IMG_OBJECT];
 int colindex=0;
 double maxFound=0;
-Mat bg; Mat carta[2];
+Mat bg; Mat carta[3];
 BFMatcher matcher(NORM_HAMMING);
   
   // RFID
@@ -103,18 +103,36 @@ BFMatcher matcher(NORM_HAMMING);
   char str_send[BUF_SIZE]; // send data buffer
   unsigned char str_recv[BUF_SIZE]; // recv data buffer
   char codice_tessera_hex[6];
-
+bool ack;
+bool waitArduinoAck()
+{
+	int attesa = 0;
+		while(1)
+		{
+			int n = RS232_PollComport(cport_nr_arduino, str_recv, (int)BUF_SIZE);
+			if(n > 0){
+				str_recv[n] = 0;
+				std::string str;
+				str.append(reinterpret_cast<const char*>(str_recv));
+				if(str == "<Ok>;") 
+				{
+					cout << "ricevuto: " << str;
+					return true;				
+				}
+				
+			}
+			attesa++;
+			usleep(1000000);  
+			if(attesa > 60) return false; 
+		}
+}
 
 int main()
 {
 	cout << "Accensione" << endl << flush;
-/*
-salva_dati_thingspeack("3BF827", "C ", 13.56);
-return 0;
 
-int c =RS232_GetPortnr("ttyACM0");
-cout << c;
-return 0;*/
+     readConfig(); // lettura file testuale di configurazione - probing
+
 	
   /////////////////////////////////////////////////////////////////////
 
@@ -136,13 +154,11 @@ return 0;*/
     int minHessian = 400;
     detector = ORB::create(ORB_PRECISION);
      
-     readConfig(); // lettura file testuale di configurazione - probing
-
 	
 
 	// legge tutte le immagini dal disco
 
-   // readImages();
+     readImages();
 
 	usleep(1000000);  /* ASPETTA un secondo */
 
@@ -169,7 +185,7 @@ return 0;*/
 
   /////////////////////////////////////////////////////////////////////
 
-		while(1)
+	/*	while(1)
 		{
 			cout << "Pool rfid" << endl << flush;
 
@@ -184,7 +200,7 @@ return 0;*/
 		} // fine ciclo lettura su tessera
 
 
-
+*/
   /////////////////////////////////////////////////////////////////////
 
   // CICLO COMUNICAZIONE ARDUINO
@@ -193,10 +209,20 @@ return 0;*/
 
   // STEP 1)  DICO A ARDUINO DI BLOCCARE LO SPORTELLO E RIMANERE IN ATTESA DELLA BILANCIA
 
-		RS232_cputs(cport_nr_arduino, " "); //mando l'ardu i attesa del peso
-
+		RS232_cputs(cport_nr_arduino, "<OpDo>;"); //mando l'ardu i attesa del peso
+		
+		ack  = waitArduinoAck();
+		if (ack == false) 
+		{
+			cout << "Errore nella comunicazione -> apertura porta"<< endl;
+			continue;
+		}
+		 
 		printf("Invio ad arduino comando per sblocco sportello  e il peso \n");
 		usleep(1000000);  /* aspetto un secondo */
+				
+		RS232_cputs(cport_nr_arduino, "<gtWg>;");
+		
 
   // STEP 2-3) RIMANGO IN ATTESA CHE ARDUINO MI RESTITUISCA IL PESO
   // E TERMINI MEZZO GIRO
@@ -206,51 +232,123 @@ return 0;*/
 			int n = RS232_PollComport(cport_nr_arduino, str_recv, (int)BUF_SIZE);
 			if(n > 0){
 				str_recv[n] = 0;
-			
-				if((str_recv[n-4] != 'p') || (str_recv[n-3] != 'e')) continue;
-				str_recv[n-2] = 0;
-				std::string str;
+				std::string str,str1;
 				str.append(reinterpret_cast<const char*>(str_recv));
-				peso = atof(str.c_str());
+				str1=str.substr(4);
+				cout << "Ricevuto: " << str1 << endl << flush;
+				
+				peso = atof(str1.c_str());
+				peso/=100;
 				break;
 			}
 		usleep(1000000);  /* pausa */
 		}
-		cout <<  "Peso otteuto: " << peso << endl ;
-		cout << "i  attesa giro teminato";
+	
+		
+		RS232_cputs(cport_nr_arduino, "<ClDo>;"); // chiusura porta
+		
+		ack  = waitArduinoAck();
+		if (ack == false) 
+		{
+			cout << "Errore nella comunicazione -> chiusura porta"<< endl;
+			continue;
+		}
+		
+		RS232_cputs(cport_nr_arduino, "<PlCam>;"); // posizione webcam		
+		
+		ack  = waitArduinoAck();
 
-
+		if (ack == false) 
+		{
+			cout << "Errore nella comunicazione -> posizionamento webcam"<< endl;
+			continue;
+		}
+		
 		usleep(2000000);  /* aspetto un secondo */
 
     // STEP 4) FOTO
 
-		captureImages(0);
+		//captureImages(0);
 
     // STEP 5) COMUNICO AD ARDUINO DI AVER FATTO LE FOTO
 
-		RS232_cputs(cport_nr_arduino, " ");
+		RS232_cputs(cport_nr_arduino, "<StAr>;"); // sposto braccio	
+		
+		ack  = waitArduinoAck();
 
-		printf("Invio ad arduino comado fine foto \n");
-		usleep(1000000);
+		if (ack == false) 
+		{
+			cout << "Errore nella comunicazione -> spostamento braccio"<< endl;
+			continue;
+		}
+		
+		
+		RS232_cputs(cport_nr_arduino, "<gtMe>;"); // richiedo sensore metalli
+		
 
     // STEP 6) RIMANGO I ATTESA CHE ARDUINO MI COMUICHI I VALORI DEI SENSORI METALLI E UV
 		while(1)
-		{
-		//aspetto che arduino mi restituisca  il metallo E ALTRI VALORI
-
+		{		
 			int n = RS232_PollComport(cport_nr_arduino, str_recv, (int)BUF_SIZE);
 			if(n > 0){
 				str_recv[n] = 0;
-				printf("Ricevuto: %s",str_recv);
-				std::string str;
+				//printf("Ricevuto: %s",str_recv);
+				std::string str,str1;
 				str.append(reinterpret_cast<const char*>(str_recv));
-				std::vector<std::string> v = explode(str, '|');
-				metallo = atof(v[0].c_str());   // metallo
-				uv = atof(v[1].c_str());        // trasparenza
+				
+				str1=str.substr(4);
+				cout << "Ricevuto: " << str1 << endl << flush;
+				
+				std::vector<std::string> v = explode(str1, ',');
+				
+				metallo = atof(v[0].c_str()) + atof(v[1].c_str());   // metallo
+				metallo /=100;
+				
 				break; // esce
 			}
 			usleep(1000000);  // pausa
 		}
+
+		RS232_cputs(cport_nr_arduino, "<gtUv>;"); // richiedo sensore UV
+		
+
+    // STEP 6) RIMANGO I ATTESA CHE ARDUINO MI COMUICHI I VALORI DEI SENSORI METALLI E UV
+		while(1)
+		{		
+			int n = RS232_PollComport(cport_nr_arduino, str_recv, (int)BUF_SIZE);
+			if(n > 0){
+				str_recv[n] = 0;
+				//printf("Ricevuto: %s",str_recv);
+				std::string str,str1;
+				str.append(reinterpret_cast<const char*>(str_recv));
+				
+				str1=str.substr(4);
+				cout << "Ricevuto: " << str1 << endl << flush;
+				
+				std::vector<std::string> v = explode(str1, ',');
+				
+				uv = atof(v[0].c_str()) + atof(v[1].c_str())+ atof(v[2].c_str());   // uv
+				uv /=100;
+				
+				break; // esce
+			}
+			usleep(1000000);  // pausa
+		}
+
+
+		RS232_cputs(cport_nr_arduino, "<HmAr>;"); // sposto braccio	
+		
+		ack  = waitArduinoAck();
+
+		if (ack == false) 
+		{
+			cout << "Errore nella comunicazione -> spostamento braccio"<< endl;
+			continue;
+		}
+		
+
+
+
 
 		cout <<  "DATI OTTENUTI: " << metallo << "  " << uv << endl ;
 
@@ -368,31 +466,35 @@ return 0;*/
   /////////////////////////////////////////////////////////////////////
 
 
+
+
 void readImages()
 {
-    // per EMD
-    bg=imread("img/sfondo.jpg");
 
-    carta[0] = imread( "img/cartamarroneok.jpg", 1 );
-    carta[1] = imread( "img/cartamarroneok.jpg", 1 ); // sostituire con carta bianca
-    
+        // per EMD
+    bg=imread("img/sfondo.jpg",CV_LOAD_IMAGE_GRAYSCALE);
+
+    carta[0] = imread( "img/cartabiancaok.jpg",1);
+    carta[1] = imread( "img/cartamarroneok.jpg",1); // sostituire con carta bianca
+    carta[2] = imread( "img/retrobueno.jpg",1); // sostituire con carta bianca
     // per ORB
-  img_object_data[0] = imread("img/mk.jpg" , CV_LOAD_IMAGE_GRAYSCALE );
-  nomiRifiuti[0] = "Milka";
-  img_object_data[1] = imread("img/cr2.jpg" , CV_LOAD_IMAGE_GRAYSCALE );
+    
+  img_object_data[0] = imread("img/bueno.jpg" , CV_LOAD_IMAGE_GRAYSCALE );
+  nomiRifiuti[0] = "Kinder bueno";
+  img_object_data[1] = imread("img/croc.jpg" , CV_LOAD_IMAGE_GRAYSCALE );
   nomiRifiuti[1] = "Croccantelle";
-  img_object_data[2] = imread("img/cr1.jpg" , CV_LOAD_IMAGE_GRAYSCALE );
-  nomiRifiuti[2] = "Croccantelle";
-  img_object_data[3] = imread("img/sc2.jpg" , CV_LOAD_IMAGE_GRAYSCALE );
-  nomiRifiuti[3] = "Schiacciatelle";
+  img_object_data[2] = imread("img/sc1.jpg" , CV_LOAD_IMAGE_GRAYSCALE );
+  nomiRifiuti[2] = "Schiacciatelle al rosmarino";
+  img_object_data[3] = imread("img/scretro.jpg" , CV_LOAD_IMAGE_GRAYSCALE );
+  nomiRifiuti[3] = "Schiacciatelle - retro ";
   img_object_data[4] = imread("img/fz1.jpg" , CV_LOAD_IMAGE_GRAYSCALE );
   nomiRifiuti[4] = "Fonzie";
-  img_object_data[5] = imread("img/ps1.jpg" , CV_LOAD_IMAGE_GRAYSCALE );
-  nomiRifiuti[5] = "Pizzottelle";
-  img_object_data[6] = imread("img/sc3.jpg" , CV_LOAD_IMAGE_GRAYSCALE );
-  nomiRifiuti[6] = "Schiacciatelle";
-  img_object_data[7] = imread("img/fz2.jpg" , CV_LOAD_IMAGE_GRAYSCALE );
-  nomiRifiuti[7] = "Fonzie";
+  img_object_data[5] = imread("img/ps2.jpg" , CV_LOAD_IMAGE_GRAYSCALE );
+  nomiRifiuti[5] = "pizzottelle 2";
+  img_object_data[6] = imread("img/retrobueno.jpg" , CV_LOAD_IMAGE_GRAYSCALE );
+  nomiRifiuti[6] = "Retro bueno";
+  img_object_data[7] = imread("img/milka.jpg" , CV_LOAD_IMAGE_GRAYSCALE );
+  nomiRifiuti[7] = "Milka";
 
   for(int i =0;i< maxImages; i++) for(int ii =0;ii< 3; ii++) determinanti[i][ii] = 0;
 
@@ -407,7 +509,6 @@ void readImages()
 
 	}
 }
-
   /////////////////////////////////////////////////////////////////////
 
   // FUNZIONI APPOGGIO
@@ -776,7 +877,7 @@ std::vector<std::string> explode(std::string const & s, char delim)
   /////////////////////////////////////////////////////////////////////
   
 void readConfig()
-{
+{/*
 	ifstream fp;
 	char line[100];
 	std::vector<std::string> v ;
@@ -825,8 +926,9 @@ void readConfig()
 		cport_nr=24;
 		
 	}
-	
+	*/
 	cport_nr_arduino=RS232_GetPortnr("arduino");
+	//cout << "porta arduino:" << cport_nr_arduino;
 	cport_nr=RS232_GetPortnr("rfid");
 	 
    
@@ -844,17 +946,35 @@ void readConfig()
   
 int checkAll()
 {
-  if(RS232_OpenComport(cport_nr, bdrate, mode))
+  /*if(RS232_OpenComport(cport_nr, bdrate, mode))
   {
     printf("Problema apertura porta scheda rfid\n");
     return -1;
-  }
+  }*/
 
   if(RS232_OpenComport(cport_nr_arduino, bdrate_arduino, mode))
   {
     printf("Problema apertura comunicazione con arduino\n");
     return -1;
   }
+  
+  // attendo che arduino mi confermi la corretta inizializzazione
+	while(1)
+	{
+		cout << "Pool arduino" << endl << flush;
+		int n = RS232_PollComport(cport_nr_arduino, str_recv, (int)BUF_SIZE);
+		if(n > 0){
+				str_recv[n] = 0;
+				std::string str;
+				str.append(reinterpret_cast<const char*>(str_recv));
+				cout << "Arduino pronto! " << str << endl << flush;
+				if(str=="<InitOk>;") break; // esco dal ciclo se tessera strisciata
+		}
+		usleep(1000000);  // 1 secondo di pausa
+	} 
+  
+  
+  
 
   try
 	{
