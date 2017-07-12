@@ -224,9 +224,9 @@ int main()
 		RS232_cputs(cport_nr_arduino, "<gtWg>;");
 		
 
-  // STEP 2 RIMANGO IN ATTESA CHE ARDUINO MI RESTITUISCA IL PESO
+		// STEP 2 RIMANGO IN ATTESA CHE ARDUINO MI RESTITUISCA IL PESO
  
-
+		bool timeout = false;
 		while(1)
 		{
 			int n = RS232_PollComport(cport_nr_arduino, str_recv, (int)BUF_SIZE);
@@ -234,6 +234,15 @@ int main()
 				str_recv[n] = 0;
 				std::string str,str1;
 				str.append(reinterpret_cast<const char*>(str_recv));
+				
+				if (str[1] == 'K') // è arrivato <Ko>;
+				{
+					timeout = true;
+					break;
+					
+				}
+				
+				
 				str1=str.substr(4);
 				cout << "Ricevuto: " << str1 << endl << flush;
 				
@@ -243,7 +252,7 @@ int main()
 			}
 		usleep(1000000);  /* pausa */
 		}
-	
+		
 		
 		RS232_cputs(cport_nr_arduino, "<ClDo>;"); // chiusura porta
 		
@@ -253,6 +262,9 @@ int main()
 			cout << "Errore nella comunicazione -> chiusura porta"<< endl;
 			continue;
 		}
+		
+		if (timeout == true)  continue; // non è attrerrato nulla sulla bilancia !
+	
 		
 		RS232_cputs(cport_nr_arduino, "<PlCam>;"); // posizione webcam		
 		
