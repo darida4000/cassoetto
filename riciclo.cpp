@@ -116,7 +116,7 @@ bool waitArduinoAck()
 				str.append(reinterpret_cast<const char*>(str_recv));
 				if(str == "<Ok>;") 
 				{
-					cout << "ricevuto: " << str;
+					
 					return true;				
 				}
 				
@@ -209,12 +209,12 @@ int main()
 
   // STEP 1)  DICO A ARDUINO DI BLOCCARE LO SPORTELLO E RIMANERE IN ATTESA DELLA BILANCIA
 
-		RS232_cputs(cport_nr_arduino, "<OpDo>;"); //mando l'ardu i attesa del peso
+		RS232_cputs(cport_nr_arduino, "<OpDo>;"); // apertura lock e attesa di apertura chiusur sportello
 		
 		ack  = waitArduinoAck();
 		if (ack == false) 
 		{
-			cout << "Errore nella comunicazione -> apertura porta"<< endl;
+			cout << "Errore nella comunicazione o sportello non chiuso-> apertura porta"<< endl;
 			continue;
 		}
 		 
@@ -224,8 +224,8 @@ int main()
 		RS232_cputs(cport_nr_arduino, "<gtWg>;");
 		
 
-  // STEP 2-3) RIMANGO IN ATTESA CHE ARDUINO MI RESTITUISCA IL PESO
-  // E TERMINI MEZZO GIRO
+  // STEP 2 RIMANGO IN ATTESA CHE ARDUINO MI RESTITUISCA IL PESO
+ 
 
 		while(1)
 		{

@@ -1,3 +1,13 @@
+ /////////////////////////////////////////////////////////////////////
+
+  // RICICLO PROGETTO DIFFERENZIATA
+  //
+  // 
+
+  /////////////////////////////////////////////////////////////////////
+
+
+
 // HX711 define
 
 #include "HX711.h"
@@ -101,7 +111,7 @@ PlainProtocol plainSendRecive;
 #define Weight "gtWg" 
 
 //Parametri di risposta
-#define HardwareState "HwSt" // Risposta secca "Ok"
+/*#define HardwareState "HwSt" // Risposta secca "Ok"
 #define SwitchDoorStae "SwDoSt" //Risposta un parametro 0-1; dello stato dello sportello
 #define WeightState "WeSt" // Risponde con il peso dell'oggetto 0-1000000; grammi
 #define MetalState "MeSt" // Risponde con due Parametri 0-1024,0-1024;
@@ -110,7 +120,7 @@ PlainProtocol plainSendRecive;
 #define IrResponse890 "IrRe2" // Risponde con 4 parametri 0-1024,0-1024,0-1024,0-1024; infrarosso 890nm
 #define IrResponse940 "IrRe2" // Risponde con 4 parametri 0-1024,0-1024,0-1024,0-1024; infrarosso 940nm
 #define UvResponse400 "UvRe1" // Risponde con 4 parametri 0-1024,0-1024,0-1024,0-1024; ultravioletto 400nm
-
+*/
 // PROTOTIPI
 //Plate
 void PlateInit();
@@ -121,7 +131,7 @@ void PlateToRecycle(int can);
 //Door
 void DoorInit(); //inizializza la porta
 void DoorLock();   //blocca lo sportello 
-void DoorUnlock();   //sblocca lo sportello 
+int DoorUnlock();   //sblocca lo sportello e rimane in attesa di apertura / chiusura
 bool DoorGetStat(); //legge lo stato della porta
 //StrokeOfArm
 void ArmInit();
@@ -142,6 +152,12 @@ float WeightScaleGetZero();
 bool GetMetal(double M[]);
 double GetWeight();
 bool GetUV(double U[]);
+
+ /////////////////////////////////////////////////////////////////////
+
+  // SETUP
+
+  /////////////////////////////////////////////////////////////////////
 
 
 void setup() {
@@ -173,12 +189,17 @@ void setup() {
 
 }
 
+ /////////////////////////////////////////////////////////////////////
+
+  // LOOP
+
+  /////////////////////////////////////////////////////////////////////
+
 void loop() {
  
  while (true) {    
     if (plainSendRecive.available()){
-      //Serial.println(plainSendRecive.receivedCommand);
-      
+     
       if (plainSendRecive.receivedCommand==PlateHoming) {
         PlateHomingF();
         plainSendRecive.sendFrame("Ok",0);
@@ -186,8 +207,9 @@ void loop() {
       
       }
       else if (plainSendRecive.receivedCommand==OpenDoor){
-        DoorUnlock();
-        plainSendRecive.sendFrame("Ok",0);
+        int r = DoorUnlock();
+        if(r==1) plainSendRecive.sendFrame("Ok",0);
+        else plainSendRecive.sendFrame("Ko",0);
       }
       else if (plainSendRecive.receivedCommand==CloseDoor){
         DoorLock();
@@ -251,8 +273,8 @@ void loop() {
 
           double risU[3]={0,0,0};
           bool ris = GetUV(risU);
-          char t[100];
-          int v1,v2,v3;
+          
+          int v1,v2,v3; // trasformo i valori ottenuti in interi
           risU[0]*=100;
           risU[1]*=100;
           risU[2]*=100;
@@ -273,13 +295,11 @@ void loop() {
       
       
     }
-    else{
-      
-    }
-//    delay(1000);
+
+
     }
 
     
-  }
+ }
 
 
