@@ -46,6 +46,7 @@
 #define IMG_SCENE 3 // numero fotogrammi
 #define ORB_PRECISION 5000 // precisione orb
 #define SOGLIA_SFONDO 20 // soglia per eliminazione sfondo
+#define SOGLIA_CARTA 1.5
 
 using namespace cv;
 using namespace std;
@@ -185,7 +186,7 @@ int main()
 
   /////////////////////////////////////////////////////////////////////
 
-	/*	while(1)
+		while(1)
 		{
 			cout << "Pool rfid" << endl << flush;
 
@@ -193,14 +194,14 @@ int main()
 			if(n > 0){
 				str_recv[n] = 0;
 				sprintf(codice_tessera_hex,"%02X%02X%02X",str_recv[6],str_recv[7],str_recv[8]);
-				printf("CODICE TESSERA PER DATABASE:%s \n",codice_tessera_hex);
+				//printf("CODICE TESSERA PER DATABASE:%s \n",codice_tessera_hex);
 				break; // esco dal ciclo se tessera strisciata
 			}
 			usleep(1000000);  // 1 secondo di pausa
 		} // fine ciclo lettura su tessera
 
 
-*/
+
   /////////////////////////////////////////////////////////////////////
 
   // CICLO COMUNICAZIONE ARDUINO
@@ -209,6 +210,7 @@ int main()
 
   // STEP 1)  DICO A ARDUINO DI APRIRE LO SPORTELLO E RIMANERE IN ATTESA DELLA BILANCIA
 
+		printf("Inserire il rifiuto \n");
 		RS232_cputs(cport_nr_arduino, "<OpDo>;"); // apertura lock e attesa di apertura chiusura sportello
 		
 		ack  = waitArduinoAck();
@@ -218,8 +220,8 @@ int main()
 			continue;
 		}
 		 
-		printf("Invio ad arduino comando per sblocco sportello  e il peso \n");
-		usleep(1000000);  /* aspetto un secondo */
+		
+		//usleep(1000000);  /* aspetto un secondo */
 		
 		
 		// STEP 2) CHIEDO  IL PESO E RIMANGO IN ATTESA CHE ARDUINO MI RESTITUISCA IL PESO
@@ -245,7 +247,7 @@ int main()
 				
 				
 				str1=str.substr(4);
-				cout << "Ricevuto: " << str1 << endl << flush;
+				
 				
 				peso = atof(str1.c_str());
 				peso/=100;
@@ -253,7 +255,7 @@ int main()
 			}
 		usleep(1000000);  /* pausa */
 		}
-		
+		cout << "Ricevuto peso: " << peso << endl << flush;
 		// STEP 2 bis CHIUSURA PORTA
 		
 		RS232_cputs(cport_nr_arduino, "<ClDo>;"); // chiusura porta
@@ -283,7 +285,7 @@ int main()
 
     // STEP 4) FACCIO LE FOTO
 
-		//captureImages(0);
+		captureImages(0);
 
     // STEP 5) CHIEDO AD ARDUINO DI  MUOVERE IL BRACCIO INTERNO
 
@@ -316,7 +318,7 @@ int main()
 				std::vector<std::string> v = explode(str1, ',');
 				
 				metallo = atof(v[0].c_str()) + atof(v[1].c_str());   // metallo
-				metallo /=100;
+				//metallo /=100;
 				
 				break; // esce
 			}
@@ -339,10 +341,11 @@ int main()
 				str1=str.substr(4);
 				cout << "Ricevuto: " << str1 << endl << flush;
 				
-				std::vector<std::string> v = explode(str1, ',');
+				//std::vector<std::string> v = explode(str1, ',');
 				
-				uv = atof(v[0].c_str()) + atof(v[1].c_str())+ atof(v[2].c_str());   // uv
-				uv /=100;
+				//uv = atof(v[0].c_str()) + atof(v[1].c_str())+ atof(v[2].c_str());   // uv
+				uv = atof(str1.c_str());
+				//uv /=100;
 				
 				break; // esce
 			}
@@ -424,11 +427,11 @@ int main()
 		
 		int can=-1;
 		string message;
-		if (risultato[0]  == 'I') message ="<PlPo>,0;";
-		else if (risultato[0]  == 'C') message ="<PlPo>,1;";
-		else if (risultato[0]  == 'P') message ="<PlPo>,2;";
-		else if (risultato[0]  == 'M') message ="<PlPo>,3;";
-		
+		if (risultato[0]  == 'I') message ="<PlPo>0;";
+		else if (risultato[0]  == 'C') message ="<PlPo>1;";
+		else if (risultato[0]  == 'P') message ="<PlPo>2;";
+		else if (risultato[0]  == 'M') message ="<PlPo>3;";
+		cout << "Messaggio " << message;
 		RS232_cputs(cport_nr_arduino, message.c_str()); 
 		
 		
@@ -458,7 +461,7 @@ int main()
 
 		cout << "FINE" << endl;
 
-		break; // togliere
+		//break; // togliere
 		
 } // fine loop principale
 
@@ -566,6 +569,9 @@ void captureImages(int cam)
 
 
     }
+    
+    imshow("stato cam",img_scene[2]);
+    waitKey(0);
 	Mat maschera;
     Mat backupFrame;
 	for(int i=0;i<IMG_SCENE ;i++)
@@ -632,9 +638,9 @@ double homographyRating(Mat* H)
 int findMaxIndex()
 {
 
-    /*cout << "determinanti:" << endl;
+    cout << "determinanti:" << endl;
     cout << "--------------" << endl;
-*/
+
     double max=0;
     int indice = -1;
     int k;
@@ -643,8 +649,8 @@ int findMaxIndex()
 
       for(int h=0;h<3;h++)
       {
-  //      cout << " " << determinanti[k][h];
-        if (determinanti[k][h] > 1) continue;
+        cout << " " << determinanti[k][h];
+        if (determinanti[k][h] > 1.5) continue; // modificata  soglia esclusione
         if(determinanti[k][h] > max)
         {
 
@@ -692,21 +698,7 @@ string calcolaEmd()
     string s="";
     string t="";
 	
-	// elimino lo sfondo da  immagini catturate
-	/*for(int i=0;i<IMG_SCENE ;i++)
-	{
-		backupFrame = img_scene[i].clone();
-		cvtColor( img_scene[i], img_scene[i], cv::COLOR_BGR2GRAY  );
-		absdiff(bg,img_scene[i],maschera);
-		threshold(maschera,maschera,40,255,THRESH_BINARY);
-		backupFrame.copyTo(img_scene[i], maschera);
 
-	}*/
-	
-	//waitKey(0);
-	
-	
-	//imshow("terzo  fotogramma",img_scene[1]);
     	// elimino lo sfondo da  immagini di carta
     for(int i=0;i<imgCarta;i++)
       {
@@ -803,10 +795,10 @@ string calcolaEmd()
         switch(i)
         {
 			case 0:	
-			if (emdResult< 1.48) return "C - Carta";
+			if (emdResult< SOGLIA_CARTA-0.2) return "C - Carta";
 			break;
 			case 1:	
-			if (emdResult< 1.5) return "C - Carta marrone";
+			if (emdResult< SOGLIA_CARTA) return "C - Carta marrone";
 			break;
 			case 2:	
 			if (emdResult< 2.4) return "P - Retro bueno";
@@ -840,7 +832,8 @@ void salva_dati_thingspeack(string codice_tessera, string mat, float peso)
 	   std::string pesoS = p.str();
 	  string invio;
 	  invio = "https://api.thingspeak.com/update?api_key=";
-	  
+	  // https://api.thingspeak.com/update?api_key=1BDO257EXYZC2O51&field1=5
+	  // https://api.thingspeak.com/update?api_key=GNB4H517VAVEHAYU&field1=5
 	  if(codice_tessera=="3BF827")
 	  {
 		  invio += "1BDO257EXYZC2O51"; // api key
@@ -853,22 +846,22 @@ void salva_dati_thingspeack(string codice_tessera, string mat, float peso)
 	  }
 	  if(mat[0] == 'C')
 	  {
-		  invio =invio + "&field1=1" + pesoS;
+		  invio =invio + "&field1=" + pesoS;
 	  }
 	  
 	  if(mat[0] == 'M')
 	  {
-		invio =invio + "&field1=2" + pesoS;
+		invio =invio + "&field2=" + pesoS;
 	  }
 	  	  if(mat[0] == 'P')
 	  {
-		  invio =invio + "&field1=3" + pesoS;
+		  invio =invio + "&field3=" + pesoS;
 	  }
 	  	  if(mat[0] == 'I')
 	  {
-		  invio =invio + "&field1=4" + pesoS;
+		  invio =invio + "&field4=" + pesoS;
 	  }  
-	  //cout << invio<< endl << flush;
+	  cout << "URL inviata a thigspeack:" << invio<< endl << flush;
     
     curl_easy_setopt(curl, CURLOPT_URL, invio.c_str());
 	  
@@ -980,11 +973,11 @@ void readConfig()
   
 int checkAll()
 {
-  /*if(RS232_OpenComport(cport_nr, bdrate, mode))
+  if(RS232_OpenComport(cport_nr, bdrate, mode))
   {
     printf("Problema apertura porta scheda rfid\n");
     return -1;
-  }*/
+  }
 
   if(RS232_OpenComport(cport_nr_arduino, bdrate_arduino, mode))
   {
