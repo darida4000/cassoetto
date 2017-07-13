@@ -29,7 +29,7 @@ void servoVaiA(int pos)
 }
 void ArmStroke()
 {
-  
+  //Serial.println("Fatto");
   // inizializzazione servo Braccio
   braccioSpost.attach(pinBraccio);
   

@@ -26,7 +26,8 @@ void PlateInit(){
 void PlateHomingF()
 {
 
-
+  Homing1=0;
+  Homing2=0;
   delay(1000);
 
   digitalWrite(slee1Pin, HIGH);
@@ -36,7 +37,7 @@ void PlateHomingF()
   digitalWrite(dire1Pin, HIGH);
   digitalWrite(dire2Pin, LOW);
   delay(500);
-  //for (int n = 0; n < numberOfSteps; n++) {
+ 
   while (Homing1 != 3 || Homing2 != 3) {
     if (Homing1 == 0)digitalWrite(step1Pin, HIGH);
     if (Homing2 == 0) digitalWrite(step2Pin, HIGH);
@@ -56,6 +57,7 @@ void PlateHomingF()
 }
 void PlateToCam()
 {
+  LedCamLightON();
   digitalWrite(slee1Pin, HIGH);
   digitalWrite(slee2Pin, HIGH);
   digitalWrite(enbPin, LOW);
@@ -78,8 +80,131 @@ void PlateToCam()
 }
 void PlateToRecycle(int can)
 {
+  LedCamLightOFF();
+  // a seconda del cestino:
+  switch(can)
+  {
+    case 0:
+      digitalWrite(slee1Pin, HIGH);
+      digitalWrite(slee2Pin, HIGH);
+      digitalWrite(enbPin, LOW);
+      delay(200);
+      digitalWrite(dire1Pin, HIGH); // disco sotto
+      digitalWrite(dire2Pin, LOW);
+      delay(200);
 
-  // devo muovere i piatti di modo da far cadere  il rifiuto nel contenitore 'can'
+      for (int n = 0; n < numberOfSteps; n++) {
+        digitalWrite(step2Pin, HIGH);
+        if(n<numberOfSteps/2) digitalWrite(step1Pin, HIGH);
+        delayMicroseconds(pulseWidthMicros); // this line is probably unnecessary
+        digitalWrite(step2Pin, LOW);
+        if(n<numberOfSteps/2) digitalWrite(step1Pin, LOW);
+        delayMicroseconds(pulseWidthMicros); // this line is probably unnecessary
+      }
+       
+      digitalWrite(slee2Pin, LOW);
+      digitalWrite(slee1Pin, LOW);
+
+
+      break;
+
+    case 1:
+      digitalWrite(slee1Pin, HIGH);
+      digitalWrite(slee2Pin, HIGH);
+      digitalWrite(enbPin, LOW);
+      delay(200);
+      digitalWrite(dire1Pin, HIGH); // disco sotto
+      digitalWrite(dire2Pin, LOW);
+      delay(200);
+
+      for (int n = 0; n < 2950; n++) {
+        digitalWrite(step2Pin, HIGH);
+        delayMicroseconds(pulseWidthMicros); // this line is probably unnecessary
+        digitalWrite(step2Pin, LOW);
+        delayMicroseconds(pulseWidthMicros); // this line is probably unnecessary
+      }
+       
+      digitalWrite(slee2Pin, LOW);
+      digitalWrite(slee1Pin, LOW);
+
+
+      break;
+
+
+    
+    case 2:
+ 
+      digitalWrite(slee1Pin, HIGH);
+      digitalWrite(slee2Pin, HIGH);
+      digitalWrite(enbPin, LOW);
+      delay(200);
+      digitalWrite(dire1Pin, LOW); // disco sotto
+      digitalWrite(dire2Pin, HIGH);
+      delay(200);
+
+      for (int n = 0; n < numberOfSteps/2; n++) {
+        digitalWrite(step2Pin, HIGH);
+        digitalWrite(step1Pin, HIGH);
+        delayMicroseconds(pulseWidthMicros); // this line is probably unnecessary
+        digitalWrite(step2Pin, LOW);
+        digitalWrite(step1Pin, LOW);
+        delayMicroseconds(pulseWidthMicros); // this line is probably unnecessary
+      }
+
+      delay(200);
+      digitalWrite(dire1Pin, HIGH); // disco sotto
+      digitalWrite(dire2Pin, LOW);
+      delay(200);
+
+      for (int n = 0; n < numberOfSteps/2; n++) {
+        digitalWrite(step2Pin, HIGH);
+        
+        delayMicroseconds(pulseWidthMicros); // this line is probably unnecessary
+        digitalWrite(step2Pin, LOW);
+        
+        delayMicroseconds(pulseWidthMicros); // this line is probably unnecessary
+      }
+
+      digitalWrite(slee2Pin, LOW);
+      digitalWrite(slee1Pin, LOW);
+
+
+      break;
+
+    
+    case 3:
+    
+      digitalWrite(slee1Pin, HIGH);
+      digitalWrite(slee2Pin, HIGH);
+      digitalWrite(enbPin, LOW);
+      delay(200);
+      digitalWrite(dire1Pin, LOW); // disco sotto
+      digitalWrite(dire2Pin, HIGH);
+      delay(200);
+
+      for (int n = 0; n < numberOfSteps; n++) {
+       if(n<numberOfSteps/2) digitalWrite(step2Pin, HIGH);
+        digitalWrite(step1Pin, HIGH);
+        delayMicroseconds(pulseWidthMicros); // this line is probably unnecessary
+        if(n<numberOfSteps/2)digitalWrite(step2Pin, LOW);
+        digitalWrite(step1Pin, LOW);
+        delayMicroseconds(pulseWidthMicros); // this line is probably unnecessary
+      }
+
+     
+
+      digitalWrite(slee2Pin, LOW);
+      digitalWrite(slee1Pin, LOW);
+
+
+      break;
+
+    default:
+    break;
+
+
+    
+  }
 
 
 

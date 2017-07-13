@@ -58,4 +58,29 @@ void LedCamLightOFF(){  digitalWrite(CamLed, LOW);}
 void IRSensLightON(){  digitalWrite(IRLedSens, HIGH);}
 void IRSensLightOFF(){ digitalWrite(IRLedSens, LOW);}
 
+/*
+ bool verifica;
+  while(true){
+  if (verifica==true){
+    IR890LightON();
+  }else{
+    IR890LightOFF();
+  }
+  verifica =!verifica;
+  Serial.print("IR0:");
+  Serial.print(analogRead(IRSense0));
+  Serial.print("IR1:");
+  Serial.print(analogRead(IRSense1));
+  Serial.print("IR2:");
+  Serial.print(analogRead(IRSense2));
+  Serial.print("UV0:");
+  Serial.print(analogRead(UVSense0));
+  Serial.print("UV1:");
+  Serial.print(analogRead(UVSense1));
+  Serial.print("UV2:");
+  Serial.print(analogRead(UVSense2));
+  Serial.println();
+  delay(700);
+  }
+ */
 

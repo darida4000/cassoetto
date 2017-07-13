@@ -44,7 +44,8 @@ byte slee2Pin = 37;//5;
 byte Homing1 = 0; // rimettere a 0
 byte Homing2 = 0;
 
-int numberOfSteps = 5900; // mezzo giro 6300
+int numberOfSteps = 5900; 
+
 
 int pulseWidthMicros = 450;  // microseconds
 int millisbetweenSteps = 1; // milliseconds - or try 1000 for slower steps
@@ -117,28 +118,31 @@ PlainProtocol plainSendRecive;
 //Operazione 
 
 #define StrokeOfArm "StAr" 
-#define HomeArm "HmAr" //Parametri 1, numeri 0-255;
+#define HomeArm "HmAr" 
 #define OpenDoor  "OpDo"
 #define CloseDoor "ClDo"
 #define PlateHoming "PlHom" 
 #define PlateOnCam "PlCam"
-#define PlatePos  "PlPo"   //Parametri 1, numeri 1-4;
+#define PlatePos  "PlPo"   //Parametri 1, numeri 0-3;
 #define LcdMessage "LcdMsg" // Parametri 2, numeri 0-100,0-100; codice del messaggio
 #define LcdBacklight "LcdBl" //paramtri 1, numeri 0-1;
 #define Metal "gtMe" 
 #define UV "gtUv" 
 #define Weight "gtWg" 
+#define QWeight "qgtWg" 
 
 //Parametri di risposta
-/*#define HardwareState "HwSt" // Risposta secca "Ok"
-#define SwitchDoorStae "SwDoSt" //Risposta un parametro 0-1; dello stato dello sportello
-#define WeightState "WeSt" // Risponde con il peso dell'oggetto 0-1000000; grammi
-#define MetalState "MeSt" // Risponde con due Parametri 0-1024,0-1024;
-#define IrResponse830 "IrRe0" // Risponde con 4 parametri 0-1024,0-1024,0-1024,0-1024; infrarosso 830nm
-#define IrResponse850 "IrRe1" // Risponde con 4 parametri 0-1024,0-1024,0-1024,0-1024; infrarosso 850nm
-#define IrResponse890 "IrRe2" // Risponde con 4 parametri 0-1024,0-1024,0-1024,0-1024; infrarosso 890nm
-#define IrResponse940 "IrRe2" // Risponde con 4 parametri 0-1024,0-1024,0-1024,0-1024; infrarosso 940nm
-#define UvResponse400 "UvRe1" // Risponde con 4 parametri 0-1024,0-1024,0-1024,0-1024; ultravioletto 400nm
+/*
+ * 
+ * OPERAZIONE ANDATA A BUON FINE:
+ * RISPOSTA:
+ * <OK>;
+ * OPERAZIONE ANDATA A BUON FINE CON  VALORI:
+ * RISPOSTA:
+ * <OK>5,6,7;
+ * OPERAZIONE NON RIUSCITA:
+ * <KO>;
+ * 
 */
 // PROTOTIPI
 //Plate
@@ -168,9 +172,9 @@ float WeightScaleGet();
 float WeightScaleGetZero();
 
 // sensori
-bool GetMetal(double M[]);
+bool GetMetal(int M[]);
 double GetWeight();
-bool GetUV(double U[]);
+int GetUV();
 
 ////Sesnori IR-UV-LuceCam
 void IRUVLCInit();
@@ -199,15 +203,17 @@ void IRSensLightOFF();
 
 void setup() {
   plainSendRecive.init();
-  //plainSendRecive.sendFrame("StartingInit",0);
+//  plainSendRecive.sendFrame("StartingInit",0);
   
   LcdInit();
   DoorInit();
+   // plainSendRecive.sendFrame("StartingInitStep1",0);
   PlateInit();
+   // plainSendRecive.sendFrame("StartingInitStep1b",0);
   WeightScaleInit();
   IRUVLCInit();
   //plainSendRecive.sendFrame("StartingInitStep2",0);
-  //Serial.begin(57600); // opens serial port, sets data rate to 57600 baud
+//  //Serial.begin(57600);  // opens serial port, sets data rate to 57600 baud
 
   // Print a message to the LCD.
   LcdBackLightON();
@@ -218,7 +224,7 @@ void setup() {
   LcdBackLightOFF();
  
 
- // PlateHomingF();
+  PlateHomingF();
 
   
   pinMode(LED_BUILTIN, OUTPUT);
@@ -312,17 +318,26 @@ void loop() {
           else plainSendRecive.sendFrame("Ko",0);
           
       }
+      else if (plainSendRecive.receivedCommand==QWeight){
+          
+          float w = GetWeightQuick();
+          w*=100;
+          int k=w;
+          if(w!=-1) plainSendRecive.sendFrame("Ok",1,k);
+          else plainSendRecive.sendFrame("Ko",0);
+          
+      }
+      
       else if (plainSendRecive.receivedCommand==Metal){
-          double M[2]={0,0};           
-          bool ris = GetMetal(M);
-          M[0]*=100;
-          M[1]*=100;
-          int m1 = M[0];
-          int m2 = M[1];
+          int m[2]={0,0};           
+          
+          bool ris = GetMetal(m);
+          
+        
             
           if(ris == true)
           {
-            plainSendRecive.sendFrame("Ok",2,m1,m2);
+            plainSendRecive.sendFrame("Ok",2,m[0],m[1]);
           }
           else
           {
@@ -332,20 +347,13 @@ void loop() {
       }
       else if (plainSendRecive.receivedCommand==UV){
 
-          double risU[3]={0,0,0};
-          bool ris = GetUV(risU);
           
-          int v1,v2,v3; // trasformo i valori ottenuti in interi
-          risU[0]*=100;
-          risU[1]*=100;
-          risU[2]*=100;
-          v1=risU[0];
-          v2=risU[1];
-          v3=risU[2];
+          int ris = GetUV();
+          
                     
-          if(ris == true)
+          if(ris >= 0)
           {
-            plainSendRecive.sendFrame("Ok",3,v1,v2,v3);
+            plainSendRecive.sendFrame("Ok",1,ris);
           }
           else
           {

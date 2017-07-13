@@ -8,14 +8,15 @@
 //Porta Funzioni 
 void DoorInit(){
     pinMode(pinSporta, INPUT_PULLUP);
-      DoorLock();
+     /* DoorLock();
     delay(1000);
       DoorUnlock();
-    delay(1000);
+    delay(1000);*/
 }
 
 void DoorLock() {
   // inizializzazione servo Blocco
+ // Serial.println("Fatto");
   bloccoPorta.attach(pinBlocco);
 
   for (int pos = 0; pos <= 60; pos += 1) { // goes from 0 degrees to 180 degrees
@@ -25,6 +26,7 @@ void DoorLock() {
   }
   delay(700);
   bloccoPorta.detach();
+ // Serial.println("Fatto");
 }
 int DoorUnlock() {
   // inizializzazione servo Blocco
