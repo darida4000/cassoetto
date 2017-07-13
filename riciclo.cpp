@@ -65,6 +65,7 @@ void readConfig();
 int checkAll();
 string imageDetection();
 string colorQuickWin();
+float shapeDetection();
 
   /////////////////////////////////////////////////////////////////////
 
@@ -432,10 +433,13 @@ int main()
 		else if (risultato[0]  == 'P') message ="<PlPo>2;";
 		else if (risultato[0]  == 'M') message ="<PlPo>3;";
 		cout << "Messaggio " << message;
+
+   // STEP 8) ASPETTO CHE ARDUINO MI DICA DI AVER  GETTATO RIFIUTO 
+
+
 		RS232_cputs(cport_nr_arduino, message.c_str()); 
 		
 		
-   // STEP 8) ASPETTO CHE ARDUINO MI DICA DI AVER  GETTATO RIFIUTO 
 		
 		ack  = waitArduinoAck();
 
@@ -546,6 +550,57 @@ void readImages()
 
 	}
 }
+  /////////////////////////////////////////////////////////////////////
+
+  // FUNZIONI APPOGGIO
+  // Shape detection
+
+  /////////////////////////////////////////////////////////////////////
+float shapeDetection()
+{
+    RNG rng(12345);
+    
+    Mat image1=imread("circle1.png",1); // shape base
+    
+    Mat image2=IMG_SCENE[2].clone();
+
+    Mat imagegray1, imagegray2, imageresult1, imageresult2;
+    int thresh=150;
+    double ans=0, result=0;;
+    cvtColor(image1, imagegray1,CV_BGR2GRAY);
+    cvtColor(image2,imagegray2,CV_BGR2GRAY);
+
+    vector<vector<Point> >contours1, contours2;
+    vector<Vec4i>hierarchy1, hierarchy2;
+
+    Canny(imagegray1, imageresult1,thresh, thresh*2);
+    Canny(imagegray2, imageresult2,thresh, thresh*2);
+
+    findContours(imageresult1,contours1,hierarchy1,CV_RETR_TREE,CV_CHAIN_APPROX_SIMPLE,cvPoint(0,0));
+    for(int i=0;i<contours1.size();i++)
+    {
+        Scalar color=Scalar(rng.uniform(0, 255), rng.uniform(0,255), rng.uniform(0,255));
+        drawContours(imageresult1,contours1,i,color,1,8,hierarchy1,0,Point());
+    }
+
+    findContours(imageresult2,contours2,hierarchy2,CV_RETR_TREE,CV_CHAIN_APPROX_SIMPLE,cvPoint(0,0));
+    for(int i=0;i<contours2.size();i++)
+    {
+        Scalar color=Scalar(rng.uniform(0, 255), rng.uniform(0,255), rng.uniform(0,255));
+        drawContours(imageresult2,contours2,i,color,1,8,hierarchy2,0,Point());
+    }
+    float minmatch = 10000;
+    for(int i=0;i<contours1.size();i++)
+    {
+        ans=matchShapes(contours1[i],contours2[i],CV_CONTOURS_MATCH_I1,0);
+        if(ans < minmatch) minmatch =ans;
+        //cout<<ans;
+        
+    }
+    return ans;
+
+  }
+
   /////////////////////////////////////////////////////////////////////
 
   // FUNZIONI APPOGGIO
