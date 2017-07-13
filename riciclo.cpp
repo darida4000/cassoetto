@@ -562,7 +562,7 @@ float shapeDetection()
     
     Mat image1=imread("circle1.png",1); // shape base
     
-    Mat image2=IMG_SCENE[2].clone();
+    Mat image2=img_scene[2].clone();
 
     Mat imagegray1, imagegray2, imageresult1, imageresult2;
     int thresh=150;
