@@ -77,6 +77,25 @@ LiquidCrystal lcd(Drs, Dena, Dd4, Dd5, Dd6, Dd7);
 #define MsgNum 10
 #define MsgRow 2
 
+
+//Sesnori IR-UV-LuceCam
+
+#define UV400Led  39
+#define IR940Led  41
+#define IR890Led  43
+#define IR850Led  45
+#define IR830Led  47
+#define CamLed    49
+#define IRLedSens 51
+//Sensori
+
+#define UVSense1 A2
+#define IRSense1 A3
+#define IRSense2 A4
+#define UVSense2 A5
+#define UVSense0 A6
+#define IRSense0 A7
+
 const String MsgLcd[MsgNum][MsgRow]={
   { "Inizializzazione", "Cassonetto" },
   { "Cassonetto", "Intelligente" },
@@ -153,6 +172,24 @@ bool GetMetal(double M[]);
 double GetWeight();
 bool GetUV(double U[]);
 
+////Sesnori IR-UV-LuceCam
+void IRUVLCInit();
+void UV400LightON();
+void UV400LightOFF();
+void IR940LightON();
+void IR940LightOFF();
+void IR890LightON();
+void IR890LightOFF();
+void IR850LightON();
+void IR850LightOFF();
+void IR830LightON();
+void IR830LightOFF();
+void LedCamLightON();
+void LedCamLightOFF();
+
+void IRSensLightON();
+void IRSensLightOFF();
+
  /////////////////////////////////////////////////////////////////////
 
   // SETUP
@@ -168,6 +205,7 @@ void setup() {
   DoorInit();
   PlateInit();
   WeightScaleInit();
+  IRUVLCInit();
   //plainSendRecive.sendFrame("StartingInitStep2",0);
   //Serial.begin(57600); // opens serial port, sets data rate to 57600 baud
 
@@ -185,8 +223,31 @@ void setup() {
   
   pinMode(LED_BUILTIN, OUTPUT);
   plainSendRecive.sendFrame("InitOk",0);
-
-
+/*
+ bool verifica;
+  while(true){
+  if (verifica==true){
+    IR890LightON();
+  }else{
+    IR890LightOFF();
+  }
+  verifica =!verifica;
+  Serial.print("IR0:");
+  Serial.print(analogRead(IRSense0));
+  Serial.print("IR1:");
+  Serial.print(analogRead(IRSense1));
+  Serial.print("IR2:");
+  Serial.print(analogRead(IRSense2));
+  Serial.print("UV0:");
+  Serial.print(analogRead(UVSense0));
+  Serial.print("UV1:");
+  Serial.print(analogRead(UVSense1));
+  Serial.print("UV2:");
+  Serial.print(analogRead(UVSense2));
+  Serial.println();
+  delay(700);
+  }
+ */
 }
 
  /////////////////////////////////////////////////////////////////////
