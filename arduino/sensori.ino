@@ -26,7 +26,7 @@ int GetUV() //COMPLETARE
 }
 
 
-double GetWeight() //COMPLETARE
+float GetWeight() //COMPLETARE
 {
   //Serial.println(pesoiniziale);
    // scale.set_scale(calibration_factor); //Adjust to this calibration factor

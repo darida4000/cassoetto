@@ -173,7 +173,7 @@ float WeightScaleGetZero();
 
 // sensori
 bool GetMetal(int M[]);
-double GetWeight();
+float GetWeight();
 int GetUV();
 
 ////Sesnori IR-UV-LuceCam
@@ -310,7 +310,7 @@ void loop() {
       }
       else if (plainSendRecive.receivedCommand==Weight){
           
-          double w = GetWeight();
+          float w = GetWeight();
           //Serial.println("peso");
           w*=100;
           int k=w;
