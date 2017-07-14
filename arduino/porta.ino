@@ -19,11 +19,12 @@ void DoorLock() {
  // Serial.println("Fatto");
   bloccoPorta.attach(pinBlocco);
 
-  for (int pos = 0; pos <= 60; pos += 1) { // goes from 0 degrees to 180 degrees
+  /*for (int pos = 0; pos <100; pos++) { // goes from 0 degrees to 180 degrees
     // in steps of 1 degree
     bloccoPorta.write(pos);              // tell servo to go to position in variable 'pos'
     delay(15);                            // waits 15ms for the servo to reach the position
-  }
+  }*/
+  bloccoPorta.write(100);
   delay(700);
   bloccoPorta.detach();
  // Serial.println("Fatto");

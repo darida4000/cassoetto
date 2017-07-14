@@ -36,7 +36,7 @@ float GetWeight() //COMPLETARE
       units = GetWeightQuick(); 
       delay(1000);
       attesa++; // aspetto max un minuto
-    } while ((abs(pesoiniziale - units) < 0.5) && (attesa < 60));
+    } while ((abs(pesoiniziale - units) < 0.00000001) && (attesa < 60));
     //Serial.println(units);
     if (pesoiniziale == units) return -1; 
     return units;
@@ -44,8 +44,16 @@ float GetWeight() //COMPLETARE
 
 float GetWeightQuick() 
 {
-  
+ 
    scale.set_scale(calibration_factor); //Adjust to this calibration factor
-   return scale.get_units(), 10; // peso
+   float f;
+   f= scale.get_units(), 10; // peso
+
+   if (f  < 0) {
+    f  = 0.00;
+  }
+   
+   return f;
+   
    
 }

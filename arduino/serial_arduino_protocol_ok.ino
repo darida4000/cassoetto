@@ -15,11 +15,13 @@
 #define DOUT 23
 #define CLK  22
 HX711 scale(DOUT, CLK);
-float calibration_factor = 2125; //-7050 worked for my 440lb max scale setup
+float calibration_factor = 1010; //-7050 worked for my 440lb max scale setup
 float units;
 float ounces;
 float pesoiniziale;
 int outputValue = 0;        // value output to the PWM (analog out)
+
+
 
 //Metal detector define
 const int analogInPin1 = A0;  // Analog input pin that the potentiometer is attached to
@@ -130,6 +132,7 @@ PlainProtocol plainSendRecive;
 #define UV "gtUv" 
 #define Weight "gtWg" 
 #define QWeight "qgtWg" 
+#define Reset "reset" 
 
 //Parametri di risposta
 /*
@@ -225,7 +228,7 @@ void setup() {
  
 
   PlateHomingF();
-
+  DoorLock();
   
   pinMode(LED_BUILTIN, OUTPUT);
   plainSendRecive.sendFrame("InitOk",0);
@@ -300,7 +303,11 @@ void loop() {
         PlateToRecycle(plainSendRecive.receivedContent[0]);
         plainSendRecive.sendFrame("Ok",0);
       }
+      else if (plainSendRecive.receivedCommand==Reset){
         
+        
+        plainSendRecive.sendFrame("InitOk",0);
+      }    
       else if (plainSendRecive.receivedCommand==LcdMessage){
           
           LcdBackLightON();
@@ -322,7 +329,9 @@ void loop() {
           
           float w = GetWeightQuick();
           w*=100;
+         
           int k=w;
+         
           if(w!=-1) plainSendRecive.sendFrame("Ok",1,k);
           else plainSendRecive.sendFrame("Ko",0);
           

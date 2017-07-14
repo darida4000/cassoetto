@@ -13,6 +13,10 @@ void WeightScaleInit(){
   long zero_factor = scale.read_average(); //Get a baseline reading
   scale.set_scale(calibration_factor); //Adjust to this calibration factor
   pesoiniziale = scale.get_units(), 10;
+    if (pesoiniziale  < 0) {
+    pesoiniziale  = 0.00;
+  }
+
 }
 float WeightScaleGet(){
   
