@@ -91,7 +91,7 @@ std::vector<KeyPoint> keypoints_object[IMG_OBJECT], keypoints_scene[IMG_SCENE];
 String nomiRifiuti[IMG_OBJECT];
 int colindex=0;
 double maxFound=0;
-Mat bg; Mat carta[3];
+Mat bg; Mat carta[3]; Mat shape;
 BFMatcher matcher(NORM_HAMMING);
   
   // RFID
@@ -223,12 +223,12 @@ int main()
 		 
 		
 		//usleep(1000000);  /* aspetto un secondo */
-		
+		printf("Lo sto pesando... \n");
 		
 		// STEP 2) CHIEDO  IL PESO E RIMANGO IN ATTESA CHE ARDUINO MI RESTITUISCA IL PESO
 				
 		RS232_cputs(cport_nr_arduino, "<gtWg>;");
-		
+		usleep(2000000);  /* pausa */
 
 		bool timeout = false;
 		while(1)
@@ -246,7 +246,7 @@ int main()
 					
 				}
 				
-				
+				cout << "Atterrato un oggetto ..." << str << endl << flush;
 				str1=str.substr(4);
 				
 				
@@ -256,7 +256,7 @@ int main()
 			}
 		usleep(1000000);  /* pausa */
 		}
-		cout << "Ricevuto peso: " << peso << endl << flush;
+		
 		// STEP 2 bis CHIUSURA PORTA
 		
 		RS232_cputs(cport_nr_arduino, "<ClDo>;"); // chiusura porta
@@ -267,7 +267,29 @@ int main()
 			cout << "Errore nella comunicazione -> chiusura porta"<< endl;
 			continue;
 		}
+		///// ripeso
 		
+		RS232_cputs(cport_nr_arduino, "<qgtWg>;");
+		usleep(2000000);  /* pausa */		
+		while(1)
+		{
+			int n = RS232_PollComport(cport_nr_arduino, str_recv, (int)BUF_SIZE);
+			if(n > 0){
+				str_recv[n] = 0;
+				std::string str,str1;
+				str.append(reinterpret_cast<const char*>(str_recv));		
+				cout << "Ricevuto: " << str << endl << flush;
+				str1=str.substr(4);				
+				peso = atof(str1.c_str());
+				peso/=100;
+				break;
+			}
+		usleep(1000000);  /* pausa */
+		}
+		cout << "Ricevuto peso: " << peso << endl << flush;
+		// STEP 2 bis CHIUSURA PORTA
+		
+		////ripeso
 		if (timeout == true)  continue; // non è attrerrato nulla sulla bilancia !
 	
 		// STEP 3) CHIEDO  A ARDUINO DI POSIZIONARSI SOTTO CAM
@@ -325,7 +347,7 @@ int main()
 			}
 			usleep(1000000);  // pausa
 		}
-
+cout << "Metallo:" <<metallo << endl << flush;
 		RS232_cputs(cport_nr_arduino, "<gtUv>;"); // richiedo sensore UV
 		
 
@@ -377,7 +399,7 @@ int main()
 		string r;
 		sprintf(risultato,"I - Indifferenziato");
     
-		if((metallo > 0.00) && (peso > 40) && (peso < 50))
+		if((metallo > 0)) // && (peso > 40) && (peso < 50)) // per il metallo non interessa il peso
 		{
 			sprintf(risultato,"M - Lattina");
 			trovato = true;
@@ -403,7 +425,7 @@ int main()
 		if(trovato == false) 
 		{
 			r = calcolaEmd();
-			if(r!="" )
+			if((r!="" ) && (peso < 8)) // peso max per carta
 			{
 				sprintf(risultato,"%s",r.c_str());
 				trovato = true;
@@ -414,7 +436,7 @@ int main()
 		if(trovato == false) // se non è escuso, passo al video
 		{
 			r = imageDetection();
-			if(r != "")
+			if((r != "") && (peso < 8));
 			{
 				sprintf(risultato,"%s",r.c_str());
 				trovato = true;
@@ -427,11 +449,12 @@ int main()
 		cout <<  "Il risultato è:" << risultato << endl << flush;
 		
 		int can=-1;
-		string message;
+		string message ="<PlPo>0;";
 		if (risultato[0]  == 'I') message ="<PlPo>0;";
 		else if (risultato[0]  == 'C') message ="<PlPo>1;";
 		else if (risultato[0]  == 'P') message ="<PlPo>2;";
 		else if (risultato[0]  == 'M') message ="<PlPo>3;";
+		
 		cout << "Messaggio " << message;
 
    // STEP 8) ASPETTO CHE ARDUINO MI DICA DI AVER  GETTATO RIFIUTO 
@@ -511,7 +534,8 @@ int main()
 
 void readImages()
 {
-
+	// matching
+shape = imread( "img/bicchiere.jpg",1);
         // per EMD
     bg=imread("img/sfondo.jpg",CV_LOAD_IMAGE_GRAYSCALE);
 
@@ -559,9 +583,17 @@ void readImages()
 float shapeDetection()
 {
     RNG rng(12345);
-    
-    Mat image1=imread("circle1.png",1); // shape base
-    
+    Mat maschera,mm;
+    Mat backupFrame;
+    Mat image1=imread("img/bicchiere.jpg",1); // shape base
+    // theresold !!!!
+            backupFrame = image1.clone();
+		cvtColor( image1, image1, cv::COLOR_BGR2GRAY  );
+		absdiff(bg,image1,maschera);
+		threshold(maschera,maschera,SOGLIA_SFONDO,255,THRESH_BINARY);
+		backupFrame.copyTo(image1, maschera);
+		
+		
     Mat image2=img_scene[2].clone();
 
     Mat imagegray1, imagegray2, imageresult1, imageresult2;
@@ -569,7 +601,7 @@ float shapeDetection()
     double ans=0, result=0;;
     cvtColor(image1, imagegray1,CV_BGR2GRAY);
     cvtColor(image2,imagegray2,CV_BGR2GRAY);
-
+    
     vector<vector<Point> >contours1, contours2;
     vector<Vec4i>hierarchy1, hierarchy2;
 
@@ -590,13 +622,46 @@ float shapeDetection()
         drawContours(imageresult2,contours2,i,color,1,8,hierarchy2,0,Point());
     }
     float minmatch = 10000;
+    
+    
+    double maxC1=0;
+    int maxC1In = 0;
     for(int i=0;i<contours1.size();i++)
     {
-        ans=matchShapes(contours1[i],contours2[i],CV_CONTOURS_MATCH_I1,0);
-        if(ans < minmatch) minmatch =ans;
-        //cout<<ans;
+		double cLen = arcLength(contours1[i],false);
+		if (cLen > maxC1)
+		{
+			maxC1 = cLen;
+			maxC1In = i; 
+		}
+		
+	}
+	
+	
+    double maxC2=0;
+    int maxC2In = 0;
+    for(int i=0;i<contours2.size();i++)
+    {
+		double cLen = arcLength(contours2[i],false);
+		if (cLen > maxC2)
+		{
+			maxC2 = cLen;
+			maxC2In = i; 
+		}
+		
+	}
+    
+    
+    imshow("c1",imageresult1);
+    imshow("c2",imageresult2);
+     waitKey(0);
+    
+
+     ans=matchShapes(contours1[maxC1In],contours2[maxC2In],CV_CONTOURS_MATCH_I1,0);
         
-    }
+    cout<<"shape detection"<<ans<<endl<<flush;
+		
+    
     return ans;
 
   }
@@ -625,6 +690,7 @@ void captureImages(int cam)
 
     }
     
+    imwrite("img/lastimg.jpg",img_scene[2]);
     imshow("stato cam",img_scene[2]);
     waitKey(0);
 	Mat maschera;
@@ -638,7 +704,10 @@ void captureImages(int cam)
 		backupFrame.copyTo(img_scene[i], maschera);
 
 	}
+	/*float f = shapeDetection();
+	cout << f;*/
 	cout << "immagini catturate" << endl << flush;
+	
 	for (int i=0;i< 3;i++)
 	{
 
@@ -853,7 +922,7 @@ string calcolaEmd()
 			if (emdResult< SOGLIA_CARTA-0.2) return "C - Carta";
 			break;
 			case 1:	
-			if (emdResult< SOGLIA_CARTA) return "C - Carta marrone";
+			if (emdResult< 3) return "C - Carta marrone";
 			break;
 			case 2:	
 			if (emdResult< 2.4) return "P - Retro bueno";
@@ -1115,7 +1184,7 @@ string colorQuickWin()
     pixel = countNonZero(test2_mask); //  307200 pixel totali per immagini 640 x 480
     perc = pixel*100/307200;
     cout << "percentuale M" << perc << endl << flush;
-    if (perc > 9) 
+    if (perc > 7) 
     {
 		ris = "P - Milka"; 
 		return ris;
