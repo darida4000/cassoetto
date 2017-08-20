@@ -18,8 +18,12 @@ bool GetMetal(int M[]) //COMPLETARE
 }
 
 
-int GetUV() //COMPLETARE
+int GetUvNir() //COMPLETARE
 {
+    UvNirRead(NirUvData);
+    UvNirDataAnalizer(NirUvData,NirUvIniV,NirUvThreshold);
+
+    
     // Deve restituire un valore tra 0 e 100 dove 0 è opaco. In caso di errore restituire -1
     return 0;
 
