@@ -46,7 +46,7 @@
 #define IMG_SCENE 3 // numero fotogrammi
 #define ORB_PRECISION 5000 // precisione orb
 #define SOGLIA_SFONDO 20 // soglia per eliminazione sfondo
-#define SOGLIA_CARTA 1.5
+#define SOGLIA_CARTA 2
 
 using namespace cv;
 using namespace std;
@@ -247,6 +247,7 @@ int main()
 				}
 				
 				cout << "Atterrato un oggetto ..." << str << endl << flush;
+				if(str.length() < 4) str="10000";
 				str1=str.substr(4);
 				
 				
@@ -279,6 +280,7 @@ int main()
 				std::string str,str1;
 				str.append(reinterpret_cast<const char*>(str_recv));		
 				cout << "Ricevuto: " << str << endl << flush;
+				if(str.length() < 4) str="00000";
 				str1=str.substr(4);				
 				peso = atof(str1.c_str());
 				peso/=100;
@@ -348,7 +350,7 @@ int main()
 			usleep(1000000);  // pausa
 		}
 cout << "Metallo:" <<metallo << endl << flush;
-		RS232_cputs(cport_nr_arduino, "<gtUv>;"); // richiedo sensore UV
+		RS232_cputs(cport_nr_arduino, "<gtUv>1;"); // richiedo sensore UV
 		
 
     // STEP 6) RIMANGO I ATTESA CHE ARDUINO MI COMUICHI I VALORI DEI SENSORI METALLI E UV
@@ -357,12 +359,12 @@ cout << "Metallo:" <<metallo << endl << flush;
 			int n = RS232_PollComport(cport_nr_arduino, str_recv, (int)BUF_SIZE);
 			if(n > 0){
 				str_recv[n] = 0;
-				//printf("Ricevuto: %s",str_recv);
+				printf("Ricevuto: %s",str_recv);
 				std::string str,str1;
 				str.append(reinterpret_cast<const char*>(str_recv));
 				
 				str1=str.substr(4);
-				cout << "Ricevuto: " << str1 << endl << flush;
+				cout << "Ricevuto per il vetro: " << str1 << endl << flush;
 				
 				//std::vector<std::string> v = explode(str1, ',');
 				
@@ -386,11 +388,6 @@ cout << "Metallo:" <<metallo << endl << flush;
 			cout << "Errore nella comunicazione -> spostamento braccio"<< endl;
 			continue;
 		}
-		
-
-
-
-
 		cout <<  "DATI OTTENUTI: " << metallo << "  " << uv << endl ;
 
   // STEP 7)  ELABORAZIONI, ARDUINO RIMANE IN ATTESA DI RESPONSO
@@ -405,11 +402,18 @@ cout << "Metallo:" <<metallo << endl << flush;
 			trovato = true;
 		}
 	
-		if((uv > 0.00) && (peso > 40) && (peso < 50) && (trovato ==false))
+		if((uv ==1) && (peso > 40) && (peso < 50) && (trovato ==false))
 		{
 			sprintf(risultato,"P - Bottiglia di plastica");
 			trovato = true;
 		}
+		
+		if((uv ==2) && (peso > 40) && (peso < 50) && (trovato ==false))
+		{
+			sprintf(risultato,"M - Vetro e barattolame");
+			trovato = true;
+		}
+		
 	/////////////////////////////////////////
 		if(trovato == false)
 		{
@@ -694,11 +698,11 @@ void captureImages(int cam)
 
     try
     {
-      for(int i=0;i<1;i++) cap >> img_scene[0];
-      usleep(1000000); 
+      for(int i=0;i<10;i++) cap >> img_scene[0];
+       
       for(int i=0;i<20;i++) cap >> img_scene[1];
       usleep(1000000); 
-      for(int i=0;i<40;i++) cap >> img_scene[2];
+      for(int i=0;i<20;i++) cap >> img_scene[2];
     }
           catch(cv::Exception& e)
     {
@@ -1203,7 +1207,7 @@ string colorQuickWin()
     pixel = countNonZero(test2_mask); //  307200 pixel totali per immagini 640 x 480
     perc = pixel*100/307200;
     cout << "percentuale M" << perc << endl << flush;
-    if (perc > 7) 
+    if (perc > 3.3) 
     {
 		ris = "P - Milka"; 
 		return ris;
