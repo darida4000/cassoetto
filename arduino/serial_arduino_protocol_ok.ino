@@ -379,9 +379,9 @@ void loop() {
 
         int ris = GetUvNir();
 
-        if (plainSendRecive.receivedContentLenth = 1) {
-          if(plainSendRecive.receivedContent[0] = 1 ){
-             Serial.println("NirUvIniV");
+        if (plainSendRecive.receivedContentLenth == 1) {
+          if(plainSendRecive.receivedContent[0] == 1 ){
+            /* Serial.println("NirUvIniV");
              for (int i = 0; i < 6; i++) {
               for (int j = 0; j < 3; j++) {
                 if(j!=0)Serial.print("-");
@@ -405,6 +405,28 @@ void loop() {
                 }
                 Serial.println();
             }
+*/
+
+            // restituisco il valore
+
+            if((NirUvData[1][1] == 0) && (NirUvData[2][1] < 5)) 
+            { // vetro
+                  //Serial.println("vetro");
+                plainSendRecive.sendFrame("Ok", 1, 0);
+            }
+            else if(((NirUvData[1][2] == 0) && (NirUvData[4][2] > 200)) || ((NirUvData[1][1] == 0) && (NirUvData[4][1] > 500)))
+            { // plastica
+             // Serial.println("plastica");
+                plainSendRecive.sendFrame("Ok", 1, 1);
+                
+            }
+            else plainSendRecive.sendFrame("Ok", 1, 2);
+            
+
+            
+            
+
+            
           }
         }
         else {

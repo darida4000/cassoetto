@@ -41,8 +41,23 @@ void IRUVLCInit() {
   delay(500);
   digitalWrite(IRLedSens, LOW);
 
+  braccioSpost.attach(pinBraccio);
+  int pos = 150;
+  braccioSpost.write(pos);                  // valori tra 0 e 180
+  delay(500);
+  
   UvNirRead(NirUvIniV);
 
+  delay(500);
+  
+  while (pos > 90)
+  {
+    braccioSpost.write(pos);                  // valori tra 0 e 180
+    delay(150);
+    pos -= 5;
+  }
+  
+  braccioSpost.detach();
 
 }
 
@@ -56,7 +71,7 @@ void IR940LightON() {
   digitalWrite(IR940Led, HIGH);
 }
 void IR940LightOFF() {
-  digitalWrite(IR890Led, LOW);
+  digitalWrite(IR940Led, LOW);
 }
 void IR890LightON() {
   digitalWrite(IR890Led, HIGH);
@@ -95,8 +110,8 @@ bool UV400TraspRead(int UvData[6][3]) {
   delay(2);
 
   UvData[0][0] = analogRead(UVSense0);
-  UvData[1][0] = analogRead(UVSense1);
-  UvData[2][0] = analogRead(UVSense2);
+  UvData[0][1] = analogRead(UVSense1);
+  UvData[0][2] = analogRead(UVSense2);
 
   delay(2);
   UV400LightOFF();
@@ -108,9 +123,9 @@ bool IRSensReflRead(int NirData[6][3]) {
   IRSensLightON();
   delay(2);
 
-  NirData[0][1] = analogRead(IRSense0);
+  NirData[1][0] = analogRead(IRSense0);
   NirData[1][1] = analogRead(IRSense1);
-  NirData[2][1] = analogRead(IRSense2);
+  NirData[1][2] = analogRead(IRSense2);
 
   delay(2);
   IRSensLightOFF();
@@ -122,8 +137,8 @@ bool IR940TraspRead(int NirData[6][3]) {
   IR940LightON();
   delay(2);
 
-  NirData[0][2] = analogRead(IRSense0);
-  NirData[1][2] = analogRead(IRSense1);
+  NirData[2][0] = analogRead(IRSense0);
+  NirData[2][1] = analogRead(IRSense1);
   NirData[2][2] = analogRead(IRSense2);
 
   delay(2);
@@ -136,9 +151,9 @@ bool IR890TraspRead(int NirData[6][3]) {
   IR890LightON();
   delay(2);
 
-  NirData[0][3] = analogRead(IRSense0);
-  NirData[1][3] = analogRead(IRSense1);
-  NirData[2][3] = analogRead(IRSense2);
+  NirData[3][0] = analogRead(IRSense0);
+  NirData[3][1] = analogRead(IRSense1);
+  NirData[3][2] = analogRead(IRSense2);
 
   delay(2);
   IR890LightOFF();
@@ -150,9 +165,9 @@ bool IR850TraspRead(int NirData[6][3]) {
   IR850LightON();
   delay(2);
 
-  NirData[0][4] = analogRead(IRSense0);
-  NirData[1][4] = analogRead(IRSense1);
-  NirData[2][4] = analogRead(IRSense2);
+  NirData[4][0] = analogRead(IRSense0);
+  NirData[4][1] = analogRead(IRSense1);
+  NirData[4][2] = analogRead(IRSense2);
 
   delay(2);
   IR850LightOFF();
@@ -164,9 +179,9 @@ bool IR830TraspRead(int NirData[6][3]) {
   IR830LightON();
   delay(2);
 
-  NirData[0][5] = analogRead(IRSense0);
-  NirData[1][5] = analogRead(IRSense1);
-  NirData[2][5] = analogRead(IRSense2);
+  NirData[5][0] = analogRead(IRSense0);
+  NirData[5][1] = analogRead(IRSense1);
+  NirData[5][2] = analogRead(IRSense2);
 
   delay(2);
   IR830LightOFF();
@@ -175,6 +190,8 @@ bool IR830TraspRead(int NirData[6][3]) {
 }
 
 bool UvNirRead(int UvNirMatrix[6][3]) {
+  
+    
   UV400TraspRead(UvNirMatrix);
   IRSensReflRead(UvNirMatrix);
   IR940TraspRead(UvNirMatrix);
