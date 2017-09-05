@@ -54,6 +54,7 @@ void PlateHomingF()
   digitalWrite(slee2Pin, LOW);
   digitalWrite(slee1Pin, LOW);
   ArmHoming();
+  WeightScaleInit();
 }
 void PlateToCam()
 {

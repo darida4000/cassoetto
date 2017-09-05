@@ -22,6 +22,7 @@ float pesoiniziale;
 int outputValue = 0;        // value output to the PWM (analog out)
 
 
+const int trimmerPin = A8; // pin potenziometro
 
 //Metal detector define
 const int analogInPin1 = A0;  // Analog input pin that the potentiometer is attached to
@@ -153,6 +154,7 @@ PlainProtocol plainSendRecive;
 #define Weight "gtWg"
 #define QWeight "qgtWg"
 #define Reset "reset"
+#define testLight "teLi"
 
 //Parametri di risposta
 /*
@@ -374,6 +376,89 @@ void loop() {
         }
 
       }
+         else if (plainSendRecive.receivedCommand == testLight) {
+
+
+       
+
+        if (plainSendRecive.receivedContentLenth == 2) {
+          plainSendRecive.sendFrame("Ok", 0);
+          switch(plainSendRecive.receivedContent[0])
+          {
+            case 1:
+              if(plainSendRecive.receivedContent[1]==0)
+              {
+                UV400LightON();
+              }
+              else
+              {
+                UV400LightOFF();
+              }
+            break;
+            case 2:
+              if(plainSendRecive.receivedContent[1]==0)
+              {
+                IR940LightON();
+              }
+              else
+              {
+                IR940LightOFF();
+              }
+            break;
+             case 3:
+              if(plainSendRecive.receivedContent[1]==0)
+              {
+                IR890LightON();
+              }
+              else
+              {
+                IR890LightOFF();
+              }
+            break;        
+            case 4:
+              if(plainSendRecive.receivedContent[1]==0)
+              {
+                IR850LightON();
+              }
+              else
+              {
+                IR850LightOFF();
+              }
+            break;       
+            case 5:
+              if(plainSendRecive.receivedContent[1]==0)
+              {
+                IR830LightON();
+              }
+              else
+              {
+                IR830LightOFF();
+              }
+            break;    
+            case 6:
+              if(plainSendRecive.receivedContent[1]==0)
+              {
+                LedCamLightON();
+              }
+              else
+              {
+                LedCamLightOFF();
+              }
+            break;    
+            case 7:
+              if(plainSendRecive.receivedContent[1]==0)
+              {
+                IRSensLightON();
+              }
+              else
+              {
+                IRSensLightOFF();
+              }
+            break;    
+            
+          }
+        }
+         }
       else if (plainSendRecive.receivedCommand == UV) {
 
 
@@ -381,7 +466,7 @@ void loop() {
 
         if (plainSendRecive.receivedContentLenth == 1) {
           if(plainSendRecive.receivedContent[0] == 1 ){
-            /* Serial.println("NirUvIniV");
+           /*  Serial.println("NirUvIniV");
              for (int i = 0; i < 6; i++) {
               for (int j = 0; j < 3; j++) {
                 if(j!=0)Serial.print("-");
@@ -409,12 +494,12 @@ void loop() {
 
             // restituisco il valore
 
-            if((NirUvData[1][1] == 0) && (NirUvData[2][1] < 5)) 
+            if((NirUvData[1][1] == 0) && (NirUvData[2][1] < 5)&& (NirUvData[4][1] >10)) 
             { // vetro
                   //Serial.println("vetro");
                 plainSendRecive.sendFrame("Ok", 1, 0);
             }
-            else if(((NirUvData[1][2] == 0) && (NirUvData[4][2] > 200)) || ((NirUvData[1][1] == 0) && (NirUvData[4][1] > 500)))
+            else if(((NirUvData[1][2] == 0) && (NirUvData[4][2] > 190) && (NirUvData[0][2] > 0) ) || ((NirUvData[1][1] == 0) && (NirUvData[4][1] > 400) ))
             { // plastica
              // Serial.println("plastica");
                 plainSendRecive.sendFrame("Ok", 1, 1);

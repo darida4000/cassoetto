@@ -49,9 +49,9 @@ float GetWeight() //COMPLETARE
 float GetWeightQuick() 
 {
  
-   scale.set_scale(calibration_factor); //Adjust to this calibration factor
+   //scale.set_scale(calibration_factor); //Adjust to this calibration factor
    float f;
-   f= scale.get_units(), 10; // peso
+   f= scale.get_units(), 1000; // peso
 
    if (f  < 0) {
     f  = 0.00;
