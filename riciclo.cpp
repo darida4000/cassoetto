@@ -42,11 +42,12 @@
 
 // COSTANTI
 #define BUF_SIZE 128
-#define IMG_OBJECT 8 // immagini nel database
+#define IMG_OBJECT  7// immagini nel database
 #define IMG_SCENE 3 // numero fotogrammi
 #define ORB_PRECISION 5000 // precisione orb
 #define SOGLIA_SFONDO 20 // soglia per eliminazione sfondo
-#define SOGLIA_CARTA 2
+#define SOGLIA_CARTA 2.5
+#define SOGLIA_CARTA_MARRONE 4
 
 using namespace cv;
 using namespace std;
@@ -66,6 +67,7 @@ int checkAll();
 string imageDetection();
 string colorQuickWin();
 float shapeDetection(Mat image1);
+bool isBottleArea();
 
   /////////////////////////////////////////////////////////////////////
 
@@ -311,6 +313,8 @@ int main()
     // STEP 4) FACCIO LE FOTO
 
 		captureImages(0);
+		
+		bool likelyBottle = isBottleArea();
 
     // STEP 5) CHIEDO AD ARDUINO DI  MUOVERE IL BRACCIO INTERNO
 
@@ -402,17 +406,17 @@ cout << "Metallo:" <<metallo << endl << flush;
 			trovato = true;
 		}
 	
-		if((uv ==1) && (peso > 40) && (peso < 50) && (trovato ==false))
+		/*if((uv < 2) && (peso > 7) && (peso < 9) && (trovato ==false))
 		{
 			sprintf(risultato,"P - Bottiglia di plastica");
 			trovato = true;
-		}
+		}*/
 		
-		if((uv ==2) && (peso > 40) && (peso < 50) && (trovato ==false))
+		/*if((uv ==2) && (peso > 40) && (peso < 50) && (trovato ==false))
 		{
 			sprintf(risultato,"M - Vetro e barattolame");
 			trovato = true;
-		}
+		}*/
 		
 	/////////////////////////////////////////
 		if(trovato == false)
@@ -443,6 +447,12 @@ cout << "Metallo:" <<metallo << endl << flush;
 				sprintf(risultato,"%s",r.c_str());
 				trovato = true;
 			}
+		}
+		
+		if ((likelyBottle == true) && (trovato == false) && (peso > 6) && (peso < 15) )
+		{
+			sprintf(risultato,"%s","P - Bottiglia di plastica");
+			trovato = true;
 		}
 	
 	// metodo orb
@@ -534,6 +544,120 @@ cout << "Metallo:" <<metallo << endl << flush;
 
   /////////////////////////////////////////////////////////////////////
 
+bool isBottleArea()
+{
+	RNG rng(12345);
+    Mat maschera,mm,image1;
+    Mat backupFrame;
+    Mat mask = imread("img/maschera.jpg",1); // shape base
+    
+    // accendo i led uv
+		 
+		RS232_cputs(cport_nr_arduino, "<teLi>1,0;"); //
+		
+		bool ack  = waitArduinoAck();
+
+		if (ack == false) 
+		{
+			cout << "Errore nella comunicazione -> accensione led"<< endl;
+			return false;
+		}
+		
+		usleep(2000000);  /* aspetto un secondo */
+    
+    for(int i=0;i<20;i++) cap >> image1;
+  		RS232_cputs(cport_nr_arduino, "<teLi>1,1;"); //
+		
+		ack  = waitArduinoAck();
+
+		if (ack == false) 
+		{
+			cout << "Errore nella comunicazione -> spegnimento led"<< endl;
+			return false;
+		}
+		
+		
+    
+     backupFrame = image1.clone();
+		cvtColor( image1, image1, cv::COLOR_BGR2GRAY  );
+		
+		backupFrame.copyTo(image1, mask);
+    
+    // theresold !!!!
+            backupFrame = image1.clone();
+		cvtColor( image1, image1, cv::COLOR_BGR2GRAY  );
+		absdiff(bg,image1,maschera);
+		threshold(maschera,maschera,5,255,THRESH_BINARY);
+		backupFrame.copyTo(image1, maschera);
+		
+		
+    Mat imagegray1,imageresult1;
+    int thresh=150;
+    double ans=0, result=0;;
+    cvtColor(image1, imageresult1,CV_BGR2GRAY);
+    
+	threshold(imageresult1,imageresult1,50,255,THRESH_BINARY);
+   
+	
+    vector<vector<Point> >contours1;
+    vector<Vec4i> hierarchy1;
+
+    findContours(imageresult1,contours1,hierarchy1,CV_RETR_TREE,CV_CHAIN_APPROX_SIMPLE,cvPoint(0,0));
+    
+ 
+	vector<vector<Point> >hull( contours1.size() );
+	
+   for( int i = 0; i < contours1.size(); i++ )
+      {  convexHull( Mat(contours1[i]), hull[i], false ); }
+
+    //cout << "qui"<< endl <<flush;
+    double maxC1=0;
+    int maxC1In = 0;
+    for(int i=0;i<contours1.size();i++)
+    {
+		double cLen = arcLength(contours1[i],false);
+		if (cLen > maxC1)
+		{
+			maxC1 = cLen;
+			maxC1In = i; 
+		}
+		
+	}
+	
+    /*Scalar color=Scalar(rng.uniform(0, 255), rng.uniform(0,255), rng.uniform(0,255));
+    Scalar color2=Scalar(rng.uniform(0, 100), rng.uniform(0,100), rng.uniform(0,100));
+        
+    drawContours(imageresult1,contours1,maxC1In,color,3,8,hierarchy1,0,Point());
+	
+	drawContours(imageresult1,hull,maxC1In,color2,3,8,hierarchy1,0,Point());*/
+	
+	/*Rect boundRect = boundingRect( contours1[maxC1In] );
+	
+	
+	rectangle(imageresult1,boundRect,Scalar(255,255,0));*/
+	
+	
+	//convexHull(Mat(contours1[maxC1In]),hull[0],false);
+	//drawContours(imageresult1,hull, 0, color, 1, 8, vector<Vec4i>(), 0, Point() );
+	
+	//double a1= boundRect.area();
+	double a2= contourArea(hull[maxC1In]);
+	cout << "Bottiglia ? Area: " << a2 << endl;
+   	
+	if((a2 > 35000) && (a2 < 57000))
+	{
+		return true;
+	}
+	
+	return false;
+	
+	
+	 	
+    
+    
+
+  }
+
 
   /////////////////////////////////////////////////////////////////////
 
@@ -571,8 +695,8 @@ shape = imread( "img/bicchiere.jpg",1);
   nomiRifiuti[5] = "pizzottelle 2";
   img_object_data[6] = imread("img/retrobueno.jpg" , CV_LOAD_IMAGE_GRAYSCALE );
   nomiRifiuti[6] = "Retro bueno";
-  img_object_data[7] = imread("img/milka.jpg" , CV_LOAD_IMAGE_GRAYSCALE );
-  nomiRifiuti[7] = "Milka";
+  //img_object_data[7] = imread("img/milka.jpg" , CV_LOAD_IMAGE_GRAYSCALE );
+  //nomiRifiuti[7] = "Milka";
 
   for(int i =0;i< maxImages; i++) for(int ii =0;ii< 3; ii++) determinanti[i][ii] = 0;
 
@@ -648,7 +772,8 @@ float shapeDetection(Mat image1)
 
 	Rect boundRect = boundingRect( contours1[maxC1In] );
 	double a1= boundRect.area();
-   
+   /*imshow("bicchiere",imageresult1);
+   waitKey(0);*/
   
 	cout  << "Area elemanto: " << a1;
        
@@ -672,9 +797,12 @@ float shapeDetection(Mat image1)
 	
 	cout << "Momenti di hu" << hu[0] << " --> " << hu[2] << endl;
 	
-	if(((hu[0]==0.18) || (hu[0]==0.19)) && ((hu[2]==0.001) || (hu[2]==0.002)) )
-	return 1;
-	else
+	if(a1 < 25000) // area minore di una certa soglia
+	{
+		if(((hu[0]==0.18) || (hu[0]==0.19)) && ((hu[2]==0.001) || (hu[2]==0.002)) ) 
+		return 1;
+	}
+	
 	return 0;
 	
 	
@@ -693,14 +821,14 @@ float shapeDetection(Mat image1)
 
 void captureImages(int cam)
 {
-
+ Mat mask = imread("img/maschera.jpg",1); // shape base
 	cout << "Inizio cattura img" << endl << flush;
 
     try
     {
-      for(int i=0;i<10;i++) cap >> img_scene[0];
+      for(int i=0;i<5;i++) cap >> img_scene[0];
        
-      for(int i=0;i<20;i++) cap >> img_scene[1];
+      for(int i=0;i<15;i++) cap >> img_scene[1];
       usleep(1000000); 
       for(int i=0;i<20;i++) cap >> img_scene[2];
     }
@@ -713,20 +841,21 @@ void captureImages(int cam)
     imwrite("img/lastimg.jpg",img_scene[2]);
     
 	Mat maschera;
-    Mat backupFrame;
+    Mat backupFrame,bk2;
 	for(int i=0;i<IMG_SCENE ;i++)
 	{
 		backupFrame = img_scene[i].clone();
 		cvtColor( img_scene[i], img_scene[i], cv::COLOR_BGR2GRAY  );
 		absdiff(bg,img_scene[i],maschera);
 		threshold(maschera,maschera,SOGLIA_SFONDO,255,THRESH_BINARY);
-		backupFrame.copyTo(img_scene[i], maschera);
+		backupFrame.copyTo(bk2, maschera);
+		bk2.copyTo(img_scene[i], mask);
 
 	}
 	/*float f = shapeDetection();
 	cout << f;*/
-	imshow("stato cam 0",img_scene[0]);
-	imshow("stato cam 1 ",img_scene[1]);
+	/*imshow("stato cam 0",img_scene[0]);
+	imshow("stato cam 1 ",img_scene[1]);*/
 	imshow("stato cam 2",img_scene[2]);
     waitKey(0);
 	cout << "immagini catturate" << endl << flush;
@@ -840,11 +969,11 @@ string calcolaEmd()
 
    
 	Mat maschera,mm;
-    Mat backupFrame;
+    Mat backupFrame,bk2;
     
     string s="";
     string t="";
-	
+	Mat mask = imread("img/maschera.jpg",1); // shape base
 
     	// elimino lo sfondo da  immagini di carta
     for(int i=0;i<imgCarta;i++)
@@ -853,7 +982,8 @@ string calcolaEmd()
 		cvtColor( carta[i], carta[i], cv::COLOR_BGR2GRAY  );
 		absdiff(bg,carta[i],maschera);
 		threshold(maschera,maschera,SOGLIA_SFONDO,255,THRESH_BINARY);
-		backupFrame.copyTo(carta[i], maschera);
+		backupFrame.copyTo(bk2, maschera);
+		bk2.copyTo(carta[i], mask);
 
       /// Converto in HSV
         cvtColor( carta[i], hsv_carta[i], COLOR_BGR2HSV );
@@ -942,10 +1072,10 @@ string calcolaEmd()
         switch(i)
         {
 			case 0:	
-			if (emdResult< SOGLIA_CARTA-0.2) return "C - Carta";
+			if (emdResult< SOGLIA_CARTA) return "C - Carta";
 			break;
 			case 1:	
-			if (emdResult< 4) return "C - Carta marrone";
+			if (emdResult< SOGLIA_CARTA_MARRONE) return "C - Carta marrone";
 			break;
 			case 2:	
 			if (emdResult< 2.4) return "P - Retro bueno";
@@ -1187,11 +1317,12 @@ string colorQuickWin()
 
 	// da ripetere per ogni prodotto
 	
-    inRange(hsv_test2, Scalar(25, 15, 50), Scalar(33, 255, 255), test2_mask); // valore per fonzie con percentuali intorno al 15
+    inRange(hsv_test2, Scalar(25, 15, 100), Scalar(33, 255, 255), test2_mask); // valore per fonzie con percentuali intorno al 15
     pixel = countNonZero(test2_mask); //  307200 pixel totali per immagini 640 x 480
     perc = pixel*100/307200;
     cout << "percentuale" << perc << endl << flush;
-    if (perc > 4 ) 
+     cout << "percentuale F" << perc << endl << flush;
+    if (perc > 5 ) 
     {
 		ris = "P - Fonzies o TUC"; 
 		return ris;
@@ -1203,7 +1334,7 @@ string colorQuickWin()
 
 	// da ripetere per ogni prodotto
 	
-    inRange(hsv_test2, Scalar(115, 100, 70), Scalar(125, 200, 200), test2_mask); // valore per milka con percentuali intorno al 15
+    inRange(hsv_test2, Scalar(110, 60, 60), Scalar(125, 200, 200), test2_mask); // valore per milka con percentuali intorno al 15
     pixel = countNonZero(test2_mask); //  307200 pixel totali per immagini 640 x 480
     perc = pixel*100/307200;
     cout << "percentuale M" << perc << endl << flush;
