@@ -86,6 +86,11 @@ void PlateToRecycle(int can)
   switch(can)
   {
     case 0:
+        LcdBackLightON();
+        LcdMsgOk(8);
+        delay(1500);
+        LcdBackLightOFF();
+
       digitalWrite(slee1Pin, HIGH);
       digitalWrite(slee2Pin, HIGH);
       digitalWrite(enbPin, LOW);
@@ -110,6 +115,11 @@ void PlateToRecycle(int can)
       break;
 
     case 1:
+            LcdBackLightON();
+        LcdMsgOk(9);
+        delay(1500);
+        LcdBackLightOFF();
+
       digitalWrite(slee1Pin, HIGH);
       digitalWrite(slee2Pin, HIGH);
       digitalWrite(enbPin, LOW);
@@ -134,6 +144,11 @@ void PlateToRecycle(int can)
 
     
     case 2:
+         LcdBackLightON();
+        LcdMsgOk(10);
+        delay(1500);
+        LcdBackLightOFF();
+
  
       digitalWrite(slee1Pin, HIGH);
       digitalWrite(slee2Pin, HIGH);
@@ -174,6 +189,11 @@ void PlateToRecycle(int can)
 
     
     case 3:
+        LcdBackLightON();
+        LcdMsgOk(11);
+        delay(1500);
+        LcdBackLightOFF();
+
     
       digitalWrite(slee1Pin, HIGH);
       digitalWrite(slee2Pin, HIGH);

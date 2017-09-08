@@ -76,10 +76,6 @@ int val;    // variable to read the value from the analog pin
 
 LiquidCrystal lcd(Drs, Dena, Dd4, Dd5, Dd6, Dd7);
 
-// messaggi lcd
-
-#define MsgNum 10
-#define MsgRow 2
 
 
 //Sesnori IR-UV-LuceCam
@@ -120,15 +116,19 @@ const int NirUvThreshold[6][3] = {{10, 10, 10},
 int NirUvAnResult[6][3];//Risultato di analaisi NIR UV
 
 
-const String MsgLcd[MsgNum][MsgRow] = {
-  { "Inizializzazione", "Cassonetto" },
-  { "Cassonetto", "Intelligente" },
+const String MsgLcd[14][2] = {
+  { "Inizializzazione", "Rifiutino" },
+  { "Rifiutino", "Intelligente" },
+  { "Rifiutino", "Pronto" },
   { "Sportello", "Aperto" },
   { "Sportello", "Chiuso" },
-  { "Tessera", "Riconosciuta" },
-  { "Tessera", "Non Riconosciuta" },
-  { "Inserire", "Rifiuto" },
-  { "Rifiuto in", "Elabrazione" },
+  { "Acquisizione", "Immagini" },
+  { "In attesa", "di un oggetto" },
+  { "Sto", "pesando..." },
+  { "Rifiuto", "Indifferenziato" },
+  { "Riconosciuta", "carta" },
+  { "Riconosciuta", "plastica" },
+  { "Riconosciuto", "Metallo" },
 
 };
 
@@ -254,6 +254,13 @@ void setup() {
 
   pinMode(LED_BUILTIN, OUTPUT);
   plainSendRecive.sendFrame("InitOk", 0);
+
+  
+  LcdBackLightON();
+  LcdMsgOk(2);
+  delay(1500);
+  LcdBackLightOFF();
+  
   /*
     bool verifica;
     while(true){
@@ -294,6 +301,11 @@ void loop() {
 
       if (plainSendRecive.receivedCommand == PlateHoming) {
         PlateHomingF();
+        LcdBackLightON();
+        LcdMsgOk(2);
+        delay(1500);
+        LcdBackLightOFF();
+  
         plainSendRecive.sendFrame("Ok", 0);
 
 
@@ -302,10 +314,20 @@ void loop() {
         int r = DoorUnlock();
         if (r == 1) plainSendRecive.sendFrame("Ok", 0);
         else plainSendRecive.sendFrame("Ko", 0);
+        LcdBackLightON();
+        LcdMsgOk(3);
+        delay(1500);
+        LcdBackLightOFF();
+  
       }
       else if (plainSendRecive.receivedCommand == CloseDoor) {
         DoorLock();
         plainSendRecive.sendFrame("Ok", 0);
+        LcdBackLightON();
+        LcdMsgOk(4);
+        delay(1500);
+        LcdBackLightOFF();
+  
       }
 
       else if (plainSendRecive.receivedCommand == StrokeOfArm) {
@@ -319,6 +341,11 @@ void loop() {
       else if (plainSendRecive.receivedCommand == PlateOnCam) {
         PlateToCam();
         plainSendRecive.sendFrame("Ok", 0);
+        LcdBackLightON();
+        LcdMsgOk(5);
+        delay(1500);
+        LcdBackLightOFF();
+  
       }
       else if (plainSendRecive.receivedCommand == PlatePos) {
 
@@ -339,6 +366,12 @@ void loop() {
       }
       else if (plainSendRecive.receivedCommand == Weight) {
 
+        LcdBackLightON();
+        LcdMsgOk(6);
+        delay(1500);
+        LcdBackLightOFF();
+
+
         float w = GetWeight();
         //Serial.println("peso");
         w *= 100;
@@ -348,6 +381,10 @@ void loop() {
 
       }
       else if (plainSendRecive.receivedCommand == QWeight) {
+        LcdBackLightON();
+        LcdMsgOk(7);
+        delay(1500);
+        LcdBackLightOFF();
 
         float w = GetWeightQuick();
         w *= 100;
