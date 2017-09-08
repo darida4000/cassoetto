@@ -93,7 +93,7 @@ std::vector<KeyPoint> keypoints_object[IMG_OBJECT], keypoints_scene[IMG_SCENE];
 String nomiRifiuti[IMG_OBJECT];
 int colindex=0;
 double maxFound=0;
-Mat bg; Mat carta[3]; Mat shape;
+Mat bg; Mat carta[3]; Mat shape,mask;
 BFMatcher matcher(NORM_HAMMING);
   
   // RFID
@@ -248,7 +248,7 @@ int main()
 					
 				}
 				
-				cout << "Atterrato un oggetto ..." << str << endl << flush;
+				cout << "Atterrato un oggetto ..."  << endl << flush;
 				if(str.length() < 4) str="10000";
 				str1=str.substr(4);
 				
@@ -354,7 +354,7 @@ int main()
 			usleep(1000000);  // pausa
 		}
 cout << "Metallo:" <<metallo << endl << flush;
-		RS232_cputs(cport_nr_arduino, "<gtUv>1;"); // richiedo sensore UV
+		/*RS232_cputs(cport_nr_arduino, "<gtUv>1;"); // richiedo sensore UV
 		
 
     // STEP 6) RIMANGO I ATTESA CHE ARDUINO MI COMUICHI I VALORI DEI SENSORI METALLI E UV
@@ -379,8 +379,8 @@ cout << "Metallo:" <<metallo << endl << flush;
 				break; // esce
 			}
 			usleep(1000000);  // pausa
-		}
-
+		}*/
+		uv =0;
 	// STEP 6 BIS) RIMETTO A POSTO IL BRACCETTO
 
 		RS232_cputs(cport_nr_arduino, "<HmAr>;"); // sposto braccio	
@@ -431,7 +431,7 @@ cout << "Metallo:" <<metallo << endl << flush;
 		
 		// controllo bicchiere
 		int y = shapeDetection(img_scene[2]);
-		if(y==1)
+		if((y==1) && (peso>2.5) && (peso < 5))
 		{
 			sprintf(risultato,"%s","P - Bicchiere di plastica");
 			trovato = true;
@@ -549,7 +549,7 @@ bool isBottleArea()
 	RNG rng(12345);
     Mat maschera,mm,image1;
     Mat backupFrame;
-    Mat mask = imread("img/maschera.jpg",1); // shape base
+    //Mat mask = imread("img/maschera.jpg",1); // shape base
     
     // accendo i led uv
 		 
@@ -671,6 +671,7 @@ bool isBottleArea()
 
 void readImages()
 {
+	mask = imread("img/maschera.jpg",1); // shape base
 	// matching
 shape = imread( "img/bicchiere.jpg",1);
         // per EMD
@@ -678,7 +679,7 @@ shape = imread( "img/bicchiere.jpg",1);
 
     carta[0] = imread( "img/cartabiancaok.jpg",1);
     carta[1] = imread( "img/cartamarroneok.jpg",1); // sostituire con carta bianca
-    carta[2] = imread( "img/retrobueno.jpg",1); // sostituire con carta bianca
+    carta[2] = imread( "img/cartabiancaok2.jpg",1); // sostituire con carta bianca
     // per ORB
     
   img_object_data[0] = imread("img/bueno.jpg" , CV_LOAD_IMAGE_GRAYSCALE );
@@ -738,6 +739,26 @@ float shapeDetection(Mat image1)
     
     
 	threshold(imageresult1,imageresult1,80,255,THRESH_BINARY);
+	// controllo cerchio
+	
+	
+	
+	/*Mat bk=imageresult1.clone();   
+	
+	vector <Vec3f> circles;
+    GaussianBlur(bk,bk,Size(5,5),0,0);
+    HoughCircles(bk,circles,HOUGH_GRADIENT,2,imageresult1.cols/5,100,100,100);
+    float cArea;
+    for(int i=0;i<circles.size();i++)
+    {
+		circle(bk,Point(cvRound(circles[i][0]),cvRound(circles[i][1])),cvRound(circles[i][2]),Scalar(255,255,255),2);
+		cArea = cvRound(circles[i][2])*cvRound(circles[i][2])*3.14;
+		cout << "Area cerchio " << i << " " << cArea << " Raggio: " << cvRound(circles[i][2]) << endl;
+    }
+
+    imshow("bk",bk);
+    waitKey(0);
+    */
 	
     vector<vector<Point> >contours1;
     vector<Vec4i> hierarchy1;
@@ -755,6 +776,10 @@ float shapeDetection(Mat image1)
     cout << "qui"<< endl <<flush;
     double maxC1=0;
     int maxC1In = 0;
+    
+    double maxAreaC = 0;
+    int maxC1Area=0;
+    
     for(int i=0;i<contours1.size();i++)
     {
 		double cLen = arcLength(contours1[i],false);
@@ -764,11 +789,18 @@ float shapeDetection(Mat image1)
 			maxC1In = i; 
 		}
 		
+		double cArea = contourArea(contours1[i]);
+		if (cArea > maxAreaC)
+		{
+			maxAreaC = cArea;
+			maxC1Area = i; 
+		}
+		
 	}
 	
     Scalar color=Scalar(rng.uniform(0, 255), rng.uniform(0,255), rng.uniform(0,255));
         
-     drawContours(imageresult1,contours1,maxC1In,color,3,8,hierarchy1,0,Point());
+    // drawContours(imageresult1,contours1,maxC1In,color,3,8,hierarchy1,0,Point());
 
 	Rect boundRect = boundingRect( contours1[maxC1In] );
 	double a1= boundRect.area();
@@ -797,11 +829,26 @@ float shapeDetection(Mat image1)
 	
 	cout << "Momenti di hu" << hu[0] << " --> " << hu[2] << endl;
 	
-	if(a1 < 25000) // area minore di una certa soglia
+	if(a1 < 26000) // area minore di una certa soglia
 	{
 		if(((hu[0]==0.18) || (hu[0]==0.19)) && ((hu[2]==0.001) || (hu[2]==0.002)) ) 
 		return 1;
 	}
+	
+	// vedo se per caso il bicchiere è in piedi ;-)
+	RotatedRect minEllipse;
+	minEllipse = fitEllipse(Mat(contours1[maxC1Area]));
+	
+	//ellipse(imageresult1, minEllipse,color,2,8);
+	//imshow("ellipse ? ",imageresult1);
+	float ellipseA = 3.1415/ 4 * minEllipse.size.width * minEllipse.size.height;
+	cout << "area elisse : " << ellipseA << endl;
+	
+	if((ellipseA > 9100) && (ellipseA < 11500)) return 1; // bicchiere sotto sopra
+	if((ellipseA > 14000) && (ellipseA < 16000)) return 1; // bicchiere in piedi
+	
+	
+	//waitKey(0);
 	
 	return 0;
 	
@@ -821,7 +868,7 @@ float shapeDetection(Mat image1)
 
 void captureImages(int cam)
 {
- Mat mask = imread("img/maschera.jpg",1); // shape base
+ 
 	cout << "Inizio cattura img" << endl << flush;
 
     try
@@ -830,7 +877,7 @@ void captureImages(int cam)
        
       for(int i=0;i<15;i++) cap >> img_scene[1];
       usleep(1000000); 
-      for(int i=0;i<20;i++) cap >> img_scene[2];
+      for(int i=0;i<25;i++) cap >> img_scene[2];
     }
           catch(cv::Exception& e)
     {
@@ -973,7 +1020,7 @@ string calcolaEmd()
     
     string s="";
     string t="";
-	Mat mask = imread("img/maschera.jpg",1); // shape base
+	//Mat mask = imread("img/maschera.jpg",1); // shape base
 
     	// elimino lo sfondo da  immagini di carta
     for(int i=0;i<imgCarta;i++)
