@@ -68,6 +68,7 @@ string imageDetection();
 string colorQuickWin();
 float shapeDetection(Mat image1);
 bool isBottleArea();
+int maxContourHullArea();
 
   /////////////////////////////////////////////////////////////////////
 
@@ -399,13 +400,22 @@ cout << "Metallo:" <<metallo << endl << flush;
 		char risultato[100];
 		string r;
 		sprintf(risultato,"I - Indifferenziato");
-    
+    /* 
+     * 
+     * 
+     * METALLO
+     * 
+     * 
+     * 
+     * DISABILITATO MOMENTANEAMENTE 
+		
+		
 		if((metallo > 0)) // && (peso > 40) && (peso < 50)) // per il metallo non interessa il peso
 		{
 			sprintf(risultato,"M - Lattina");
 			trovato = true;
 		}
-	
+	*/
 		/*if((uv < 2) && (peso > 7) && (peso < 9) && (trovato ==false))
 		{
 			sprintf(risultato,"P - Bottiglia di plastica");
@@ -431,11 +441,26 @@ cout << "Metallo:" <<metallo << endl << flush;
 		
 		// controllo bicchiere
 		int y = shapeDetection(img_scene[2]);
+		
 		if((y==1) && (peso>2.5) && (peso < 5))
 		{
 			sprintf(risultato,"%s","P - Bicchiere di plastica");
 			trovato = true;
 		}
+		
+		// bottiglie spostate prima del controllo carta
+		
+		if ((likelyBottle == true) && (trovato == false) && (peso > 6) && (peso < 15) )
+		{
+			sprintf(risultato,"%s","P - Bottiglia di plastica");
+			trovato = true;
+		}
+	
+		if ((likelyBottle == true) && (trovato == false) && (peso > 100)  )
+		{
+			sprintf(risultato,"%s","M - Bottiglia di vetro");
+			trovato = true;
+		}		
 		
 		// controllo con istogramma
 		if(trovato == false) 
@@ -449,12 +474,7 @@ cout << "Metallo:" <<metallo << endl << flush;
 			}
 		}
 		
-		if ((likelyBottle == true) && (trovato == false) && (peso > 6) && (peso < 15) )
-		{
-			sprintf(risultato,"%s","P - Bottiglia di plastica");
-			trovato = true;
-		}
-	
+
 	// metodo orb
 		if(trovato == false) // se non è escuso, passo al video
 		{
@@ -544,6 +564,51 @@ cout << "Metallo:" <<metallo << endl << flush;
 
   /////////////////////////////////////////////////////////////////////
 
+
+
+int maxContourHullArea()
+{
+		
+	Mat imagegray1,imageresult1;
+    int thresh=150;
+    double ans=0, result=0;;
+    cvtColor(img_scene[2], imageresult1,CV_BGR2GRAY);
+    
+    // soglia bianco 
+	threshold(imageresult1,imageresult1,50,255,THRESH_BINARY);
+   
+	// trovo contorni
+	vector<vector<Point> >contours1;
+    vector<Vec4i> hierarchy1;
+
+    findContours(imageresult1,contours1,hierarchy1,CV_RETR_TREE,CV_CHAIN_APPROX_SIMPLE,cvPoint(0,0));
+    
+	// per ciascun contorno trovo convex hull
+	vector<vector<Point> >hull( contours1.size() );
+	
+	for( int i = 0; i < contours1.size(); i++ )
+      {  convexHull( Mat(contours1[i]), hull[i], false ); }
+
+    // trovo contorno e hull maggiori
+    double maxC1=0;
+    int maxC1In = 0;
+    for(int i=0;i<contours1.size();i++)
+    {
+		double cLen = arcLength(contours1[i],false);
+		if (cLen > maxC1)
+		{
+			maxC1 = cLen;
+			maxC1In = i; 
+		}
+		
+	}
+	
+	// calcolo area hull
+	double a2= contourArea(hull[maxC1In]);
+	return a2;
+ }
+
+
 bool isBottleArea()
 {
 	RNG rng(12345);
@@ -610,7 +675,7 @@ bool isBottleArea()
    for( int i = 0; i < contours1.size(); i++ )
       {  convexHull( Mat(contours1[i]), hull[i], false ); }
 
-    //cout << "qui"<< endl <<flush;
+  
     double maxC1=0;
     int maxC1In = 0;
     for(int i=0;i<contours1.size();i++)
@@ -624,37 +689,26 @@ bool isBottleArea()
 		
 	}
 	
-    /*Scalar color=Scalar(rng.uniform(0, 255), rng.uniform(0,255), rng.uniform(0,255));
-    Scalar color2=Scalar(rng.uniform(0, 100), rng.uniform(0,100), rng.uniform(0,100));
-        
-    drawContours(imageresult1,contours1,maxC1In,color,3,8,hierarchy1,0,Point());
+ 
+	int a2= contourArea(hull[maxC1In]); 		// area con led uv accesi
+	int diff = a2 - maxContourHullArea();		// area max contorno a led spenti
+	float diffPercentuale = diff*100/a2;
 	
-	drawContours(imageresult1,hull,maxC1In,color2,3,8,hierarchy1,0,Point());*/
-	
-	/*Rect boundRect = boundingRect( contours1[maxC1In] );
+	cout << "Bottiglia ? Area: " << a2 << " Differenza aree " << diff << "Percentuale " << diffPercentuale << endl;
 	
 	
-	rectangle(imageresult1,boundRect,Scalar(255,255,0));*/
-	
-	
-	//convexHull(Mat(contours1[maxC1In]),hull[0],false);
-	//drawContours(imageresult1,hull, 0, color, 1, 8, vector<Vec4i>(), 0, Point() );
-	
-	//double a1= boundRect.area();
-	double a2= contourArea(hull[maxC1In]);
-	cout << "Bottiglia ? Area: " << a2 << endl;
+	// se differenza superiore a una certa soglia percentuale
    	
 	if((a2 > 35000) && (a2 < 57000))
 	{
 		return true;
 	}
 	
+	
+	
+	if (diffPercentuale > 50) return true;
+	
 	return false;
-	
-	
-	 	
-    
-    
 
   }
 
